@@ -99,4 +99,10 @@
   .touch-target {
     @apply min-h-[44px] min-w-[44px];
   }
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
 }

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth";
 import { AppShell } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
@@ -33,6 +33,8 @@ import {
   useAllProfiles,
   useStores,
 } from "@/hooks/useDashboardData";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { friendlyDate } from "@/lib/dateUtils";
 
 export default function HRAdminPage() {
   const { profile } = useAuth();
@@ -41,6 +43,8 @@ export default function HRAdminPage() {
   const { data: programs, isLoading } = useAllPrograms();
   const { data: profiles } = useAllProfiles();
   const { data: stores } = useStores();
+
+  useEffect(() => { document.title = "Team Status — WEAuto"; }, []);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedAssociate, setSelectedAssociate] = useState("");
@@ -179,9 +183,18 @@ export default function HRAdminPage() {
                     </PopoverContent>
                   </Popover>
                 </div>
-                <Button className="w-full" onClick={handleCreate} disabled={creating}>
-                  {creating ? "Creating..." : "Create Program"}
-                </Button>
+                <ConfirmDialog
+                  title="Start Onboarding?"
+                  description={`Start onboarding for ${profileMap.get(selectedAssociate)?.full_name || "this associate"} beginning ${startDate ? format(startDate, "PPP") : "selected date"}? This will create their 20-day program.`}
+                  confirmLabel="Start Onboarding"
+                  onConfirm={handleCreate}
+                  disabled={creating || !selectedAssociate || !selectedManager || !startDate}
+                  trigger={
+                    <Button className="w-full" disabled={creating || !selectedAssociate || !selectedManager || !startDate}>
+                      {creating ? "Creating..." : "Create Program"}
+                    </Button>
+                  }
+                />
               </div>
             </DialogContent>
           </Dialog>

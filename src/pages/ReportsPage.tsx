@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth";
 import { AppShell } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
@@ -35,6 +35,7 @@ import {
   csvDownload,
 } from "@/hooks/useDashboardData";
 import { Download, Search } from "lucide-react";
+import { friendlyDate } from "@/lib/dateUtils";
 
 type ReportType = "active" | "completion" | "gaps" | "manager";
 
@@ -45,6 +46,8 @@ export default function ReportsPage() {
   const [search, setSearch] = useState("");
   const [sortCol, setSortCol] = useState("");
   const [sortAsc, setSortAsc] = useState(true);
+
+  useEffect(() => { document.title = "Reports — WEAuto"; }, []);
 
   const { data: programs } = useAllPrograms();
   const { data: allTasks } = useAllTasks();

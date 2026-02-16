@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { AppShell } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
@@ -67,6 +67,8 @@ export default function DayViewPage() {
   const navigate = useNavigate();
   const num = parseInt(dayNumber || "1", 10);
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
+
+  useEffect(() => { document.title = `Day ${num} — WEAuto`; }, [num]);
 
   const { data: days } = useDays();
   const day = days?.find((d) => d.day_number === num);

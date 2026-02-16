@@ -20,9 +20,9 @@ export function StatusDot({ status, count }: { status: "on_track" | "behind" | "
   };
   if (count === 0) return null;
   return (
-    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+    <div className="inline-flex items-center gap-1 text-xs text-muted-foreground">
       <span className={`h-2 w-2 rounded-full ${colors[status]}`} />
       {count}
-    </span>
+    </div>
   );
 }
