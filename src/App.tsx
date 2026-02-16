@@ -21,6 +21,7 @@ import CorporateDashboardPage from "./pages/CorporateDashboardPage";
 import StoreDetailPage from "./pages/StoreDetailPage";
 import ReportsPage from "./pages/ReportsPage";
 import HRAdminPage from "./pages/HRAdminPage";
+import InvitePage from "./pages/InvitePage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -58,6 +59,7 @@ function AppRoutes() {
       <Route path="/store/:storeId" element={<ProtectedRoute><RoleGuard allowedRoles={['gm', 'corporate_admin']}><StoreDetailPage /></RoleGuard></ProtectedRoute>} />
       <Route path="/reports" element={<ProtectedRoute><RoleGuard allowedRoles={['gm', 'corporate_admin', 'hr_admin']}><ReportsPage /></RoleGuard></ProtectedRoute>} />
       <Route path="/content-admin" element={<ProtectedRoute><RoleGuard allowedRoles={['corporate_admin']}><ContentAdminPage /></RoleGuard></ProtectedRoute>} />
+      <Route path="/invite" element={<ProtectedRoute><RoleGuard allowedRoles={['sales_manager', 'gm', 'hr_admin', 'corporate_admin']}><InvitePage /></RoleGuard></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

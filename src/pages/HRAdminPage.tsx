@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect } from "react";
+import { InviteFAB } from "@/components/InviteFAB";
 import { useAuth } from "@/lib/auth";
 import { AppShell } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
@@ -258,6 +259,7 @@ export default function HRAdminPage() {
           </div>
         )}
       </div>
+      <InviteFAB />
     </AppShell>
   );
 }

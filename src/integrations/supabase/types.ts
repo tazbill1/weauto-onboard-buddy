@@ -90,6 +90,59 @@ export type Database = {
           },
         ]
       }
+      invites: {
+        Row: {
+          accepted_at: string | null
+          assigned_manager_id: string | null
+          auto_start_onboarding: boolean
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          invited_by: string
+          role: Database["public"]["Enums"]["app_role"]
+          status: string
+          store_id: string
+          token: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          assigned_manager_id?: string | null
+          auto_start_onboarding?: boolean
+          created_at?: string
+          email: string
+          expires_at?: string
+          id?: string
+          invited_by: string
+          role: Database["public"]["Enums"]["app_role"]
+          status?: string
+          store_id: string
+          token?: string
+        }
+        Update: {
+          accepted_at?: string | null
+          assigned_manager_id?: string | null
+          auto_start_onboarding?: boolean
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          invited_by?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          status?: string
+          store_id?: string
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invites_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           body: string

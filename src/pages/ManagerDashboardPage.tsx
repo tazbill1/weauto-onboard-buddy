@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import { InviteFAB } from "@/components/InviteFAB";
 import { useAuth } from "@/lib/auth";
 import { AppShell } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
@@ -257,6 +258,7 @@ export default function ManagerDashboardPage() {
           )}
         </div>
       </div>
+      <InviteFAB />
     </AppShell>
   );
 }
