@@ -10,6 +10,7 @@ import type {
   TaskCompletion,
   DailySignoff,
 } from "@/hooks/useOnboardingData";
+import { countBusinessDays } from "@/hooks/useOnboardingData";
 
 // ── Shared data hooks for dashboards ──
 
@@ -106,10 +107,8 @@ export function getAssociateStatusFromData(
 
   const startDate = new Date(program.start_date);
   const today = new Date();
-  const daysDiff = Math.floor(
-    (today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
-  );
-  const expectedDay = Math.min(daysDiff + 1, 20);
+  const businessDays = countBusinessDays(startDate, today);
+  const expectedDay = Math.min(businessDays + 1, 20);
   if (program.current_day < expectedDay) return "behind";
   return "on_track";
 }
