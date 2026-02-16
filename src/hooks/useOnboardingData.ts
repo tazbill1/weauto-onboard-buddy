@@ -40,6 +40,8 @@ export interface OnboardingProgram {
   start_date: string;
   current_day: number;
   status: string;
+  actual_end_date: string | null;
+  expected_end_date: string | null;
 }
 
 export interface PerformanceRating {

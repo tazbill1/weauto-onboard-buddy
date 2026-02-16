@@ -15,6 +15,11 @@ import ReviewUploadPage from "./pages/ReviewUploadPage";
 import PlaceholderPage from "./pages/PlaceholderPage";
 import ContentAdminPage from "./pages/ContentAdminPage";
 import NotificationsPage from "./pages/NotificationsPage";
+import GMOverviewPage from "./pages/GMOverviewPage";
+import CorporateDashboardPage from "./pages/CorporateDashboardPage";
+import StoreDetailPage from "./pages/StoreDetailPage";
+import ReportsPage from "./pages/ReportsPage";
+import HRAdminPage from "./pages/HRAdminPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -48,8 +53,9 @@ function AppRoutes() {
       <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
       <Route path="/team" element={<ProtectedRoute><ManagerDashboardPage /></ProtectedRoute>} />
       <Route path="/reviews" element={<ProtectedRoute><PlaceholderPage title="Reviews" /></ProtectedRoute>} />
-      <Route path="/stores" element={<ProtectedRoute><PlaceholderPage title="Stores" /></ProtectedRoute>} />
-      <Route path="/reports" element={<ProtectedRoute><PlaceholderPage title="Reports" /></ProtectedRoute>} />
+      <Route path="/stores" element={<ProtectedRoute><GMOverviewPage /></ProtectedRoute>} />
+      <Route path="/store/:storeId" element={<ProtectedRoute><StoreDetailPage /></ProtectedRoute>} />
+      <Route path="/reports" element={<ProtectedRoute><ReportsPage /></ProtectedRoute>} />
       <Route path="/content-admin" element={<ProtectedRoute><ContentAdminPage /></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />
     </Routes>

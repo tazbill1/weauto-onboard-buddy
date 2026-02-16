@@ -47,6 +47,7 @@ const navByRole: Record<string, NavItem[]> = {
   hr_admin: [
     { label: "Team", icon: Users, path: "/" },
     { label: "Reports", icon: FileText, path: "/reports" },
+    { label: "Alerts", icon: Bell, path: "/notifications" },
     { label: "Profile", icon: User, path: "/profile" },
   ],
 };
