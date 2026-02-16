@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { sanitizeHtml } from "@/lib/sanitize";
 import { AppShell } from "@/components/AppShell";
 import { useAuth } from "@/lib/auth";
 import { Navigate } from "react-router-dom";
@@ -285,7 +286,7 @@ export default function ContentAdminPage() {
                 <RichTextEditor content={editHtml} onChange={setEditHtml} />
               </TabsContent>
               <TabsContent value="preview" className="min-h-[300px]">
-                <div className="prose prose-sm max-w-none p-4 border rounded-lg bg-card" dangerouslySetInnerHTML={{ __html: editHtml || "<p class='text-muted-foreground'>No content yet</p>" }} />
+                <div className="prose prose-sm max-w-none p-4 border rounded-lg bg-card" dangerouslySetInnerHTML={{ __html: sanitizeHtml(editHtml || "<p class='text-muted-foreground'>No content yet</p>") }} />
               </TabsContent>
             </Tabs>
           </div>
@@ -304,7 +305,7 @@ export default function ContentAdminPage() {
           <DialogHeader>
             <DialogTitle>{previewTask?.title}</DialogTitle>
           </DialogHeader>
-          <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: previewTask?.content_html || "<p class='text-muted-foreground'>No content available</p>" }} />
+          <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: sanitizeHtml(previewTask?.content_html || "<p class='text-muted-foreground'>No content available</p>") }} />
         </DialogContent>
       </Dialog>
 

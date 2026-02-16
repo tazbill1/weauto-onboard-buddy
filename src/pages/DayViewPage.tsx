@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { sanitizeHtml } from "@/lib/sanitize";
 import { useParams, useNavigate } from "react-router-dom";
 import { AppShell } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
@@ -185,7 +186,7 @@ export default function DayViewPage() {
                                     {expandedTaskId === task.id ? "Hide content" : "View content"}
                                   </button>
                                   {expandedTaskId === task.id && (
-                                    <div className="prose prose-sm max-w-none pb-3 text-foreground" dangerouslySetInnerHTML={{ __html: task.content_html }} />
+                                    <div className="prose prose-sm max-w-none pb-3 text-foreground" dangerouslySetInnerHTML={{ __html: sanitizeHtml(task.content_html) }} />
                                   )}
                                 </div>
                               )}
