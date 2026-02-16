@@ -215,15 +215,37 @@ export function useToggleCompletion() {
 // ── Manager-specific hooks ──
 
 export function useManagedPrograms() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   return useQuery({
-    queryKey: ["managed-programs", user?.id],
-    enabled: !!user?.id,
+    queryKey: ["managed-programs", user?.id, profile?.role, profile?.store_id],
+    enabled: !!user?.id && !!profile,
     queryFn: async () => {
+      // Sales managers see only their directly assigned associates
+      if (profile!.role === 'sales_manager') {
+        const { data, error } = await supabase
+          .from("onboarding_programs" as any)
+          .select("*")
+          .eq("manager_id", user!.id)
+          .eq("status", "active");
+        if (error) throw error;
+        return data as unknown as OnboardingProgram[];
+      }
+
+      // GMs see all active programs at their store
+      if (profile!.role === 'gm') {
+        const { data, error } = await supabase
+          .from("onboarding_programs" as any)
+          .select("*")
+          .eq("store_id", profile!.store_id)
+          .eq("status", "active");
+        if (error) throw error;
+        return data as unknown as OnboardingProgram[];
+      }
+
+      // Corporate admins see all active programs
       const { data, error } = await supabase
         .from("onboarding_programs" as any)
         .select("*")
-        .eq("manager_id", user!.id)
         .eq("status", "active");
       if (error) throw error;
       return data as unknown as OnboardingProgram[];
@@ -368,13 +390,37 @@ export function useUploadsForProgram(programId: string | undefined) {
 }
 
 export function usePendingUploads() {
+  const { profile } = useAuth();
   return useQuery({
-    queryKey: ["pending-uploads"],
+    queryKey: ["pending-uploads", profile?.store_id, profile?.role],
+    enabled: !!profile,
     queryFn: async () => {
+      // Corporate admins see all pending uploads across all stores
+      if (profile!.role === 'corporate_admin') {
+        const { data, error } = await supabase
+          .from("uploads" as any)
+          .select("*")
+          .eq("status", "pending_review")
+          .order("uploaded_at", { ascending: true });
+        if (error) throw error;
+        return data as unknown as UploadRecord[];
+      }
+
+      // All other manager roles: filter by their store
+      const { data: programs } = await supabase
+        .from("onboarding_programs" as any)
+        .select("id")
+        .eq("store_id", profile!.store_id);
+
+      if (!programs || programs.length === 0) return [];
+
+      const programIds = programs.map((p: any) => p.id);
+
       const { data, error } = await supabase
         .from("uploads" as any)
         .select("*")
         .eq("status", "pending_review")
+        .in("program_id", programIds)
         .order("uploaded_at", { ascending: true });
       if (error) throw error;
       return data as unknown as UploadRecord[];
