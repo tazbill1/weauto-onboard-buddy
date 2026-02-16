@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { TaskItem } from "@/components/TaskItem";
+import { UploadDeliverable } from "@/components/UploadDeliverable";
 import {
   useDays,
   useTasksForDay,
@@ -12,6 +13,7 @@ import {
   useToggleCompletion,
   useRatingsForProgram,
   useSignoffsForProgram,
+  useUploadsForProgram,
   getPhaseLabel,
   getSectionLabel,
 } from "@/hooks/useOnboardingData";
@@ -71,10 +73,12 @@ export default function DayViewPage() {
   const { data: completions } = useCompletions(program?.id);
   const { data: ratings } = useRatingsForProgram(program?.id);
   const { data: signoffs } = useSignoffsForProgram(program?.id);
+  const { data: uploads } = useUploadsForProgram(program?.id);
   const toggleCompletion = useToggleCompletion();
 
   const completionMap = new Map(completions?.map((c) => [c.task_id, c]));
   const ratingMap = new Map(ratings?.map((r) => [r.task_id, r]));
+  const uploadMap = new Map(uploads?.map((u) => [u.task_id, u]));
   const daySignoff = signoffs?.find((s) => s.day_number === num);
 
   const tasksBySection = (tasks || []).reduce((acc, task) => {
@@ -111,27 +115,15 @@ export default function DayViewPage() {
           <Skeleton className="h-28 w-full rounded-2xl" />
         ) : (
           <Card className="p-5">
-            <p
-              className={`text-xs font-semibold uppercase tracking-wider ${
-                phaseColors[day.phase] || "text-muted-foreground"
-              }`}
-            >
+            <p className={`text-xs font-semibold uppercase tracking-wider ${phaseColors[day.phase] || "text-muted-foreground"}`}>
               Week {day.week_number} · {getPhaseLabel(day.phase)}
             </p>
-            <h1 className="mt-1 text-xl font-bold text-foreground">
-              Day {day.day_number}: {day.title}
-            </h1>
-            {day.subtitle && (
-              <p className="mt-1 text-sm text-muted-foreground">{day.subtitle}</p>
-            )}
-
+            <h1 className="mt-1 text-xl font-bold text-foreground">Day {day.day_number}: {day.title}</h1>
+            {day.subtitle && <p className="mt-1 text-sm text-muted-foreground">{day.subtitle}</p>}
             <div className="mt-4 flex items-center gap-3">
               <Progress value={dayProgress} className="flex-1 h-2" />
-              <span className="text-xs font-semibold text-muted-foreground whitespace-nowrap">
-                {completedCount}/{totalTasks}
-              </span>
+              <span className="text-xs font-semibold text-muted-foreground whitespace-nowrap">{completedCount}/{totalTasks}</span>
             </div>
-
             {daySignoff && (
               <div className="mt-3 flex items-center gap-2 text-xs text-success font-medium">
                 <Check className="h-3.5 w-3.5" />
@@ -155,26 +147,23 @@ export default function DayViewPage() {
                     <AccordionTrigger className="px-4 py-3 hover:no-underline">
                       <div className="flex items-center gap-2">
                         <Icon className="h-4 w-4 text-secondary" />
-                        <span className="text-sm font-semibold text-foreground">
-                          {getSectionLabel(section)}
-                        </span>
-                        <span className="text-xs text-muted-foreground ml-auto mr-2">
-                          {sectionCompleted}/{sectionTasks!.length}
-                        </span>
+                        <span className="text-sm font-semibold text-foreground">{getSectionLabel(section)}</span>
+                        <span className="text-xs text-muted-foreground ml-auto mr-2">{sectionCompleted}/{sectionTasks!.length}</span>
                       </div>
                     </AccordionTrigger>
                     <AccordionContent className="px-1 pb-2">
                       <div className="divide-y divide-border">
                         {sectionTasks!.map((task) => {
                           const taskRating = ratingMap.get(task.id);
+                          const taskUpload = uploadMap.get(task.id);
                           return (
                             <div key={task.id}>
                               <TaskItem
                                 task={task}
                                 completion={completionMap.get(task.id)}
-                                disabled={!program}
+                                disabled={!program || task.requires_upload}
                                 onToggle={() => {
-                                  if (!program) return;
+                                  if (!program || task.requires_upload) return;
                                   toggleCompletion.mutate({
                                     programId: program.id,
                                     taskId: task.id,
@@ -182,6 +171,17 @@ export default function DayViewPage() {
                                   });
                                 }}
                               />
+                              {task.requires_upload && program && (
+                                <div className="px-3 pb-3 pl-12">
+                                  <UploadDeliverable
+                                    programId={program.id}
+                                    taskId={task.id}
+                                    storeId={program.store_id}
+                                    dayNumber={num}
+                                    existingUpload={taskUpload || null}
+                                  />
+                                </div>
+                              )}
                               {taskRating && daySignoff && (
                                 <div className="px-3 pb-3 pl-12">
                                   <RatingBadge rating={taskRating.rating} notes={taskRating.notes} />
@@ -201,28 +201,16 @@ export default function DayViewPage() {
 
         {daySignoff?.overall_notes && (
           <Card className="p-4">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
-              Manager Notes
-            </h3>
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Manager Notes</h3>
             <p className="text-sm text-foreground">{daySignoff.overall_notes}</p>
           </Card>
         )}
 
         <div className="flex justify-between pt-2">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={num <= 1}
-            onClick={() => navigate(`/day/${num - 1}`)}
-          >
+          <Button variant="outline" size="sm" disabled={num <= 1} onClick={() => navigate(`/day/${num - 1}`)}>
             <ChevronLeft className="h-4 w-4 mr-1" /> Day {num - 1}
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={num >= 20}
-            onClick={() => navigate(`/day/${num + 1}`)}
-          >
+          <Button variant="outline" size="sm" disabled={num >= 20} onClick={() => navigate(`/day/${num + 1}`)}>
             Day {num + 1} <ChevronLeft className="h-4 w-4 ml-1 rotate-180" />
           </Button>
         </div>

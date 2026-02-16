@@ -11,6 +11,7 @@ import ProfilePage from "./pages/ProfilePage";
 import DayViewPage from "./pages/DayViewPage";
 import ManagerDashboardPage from "./pages/ManagerDashboardPage";
 import CheckInPage from "./pages/CheckInPage";
+import ReviewUploadPage from "./pages/ReviewUploadPage";
 import PlaceholderPage from "./pages/PlaceholderPage";
 import NotFound from "./pages/NotFound";
 
@@ -39,6 +40,7 @@ function AppRoutes() {
       <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
       <Route path="/day/:dayNumber" element={<ProtectedRoute><DayViewPage /></ProtectedRoute>} />
       <Route path="/checkin/:programId/:dayNumber" element={<ProtectedRoute><CheckInPage /></ProtectedRoute>} />
+      <Route path="/review/:uploadId" element={<ProtectedRoute><ReviewUploadPage /></ProtectedRoute>} />
       <Route path="/progress" element={<ProtectedRoute><PlaceholderPage title="My Progress" /></ProtectedRoute>} />
       <Route path="/content" element={<ProtectedRoute><PlaceholderPage title="Content Library" /></ProtectedRoute>} />
       <Route path="/notifications" element={<ProtectedRoute><PlaceholderPage title="Notifications" /></ProtectedRoute>} />

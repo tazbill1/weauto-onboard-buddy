@@ -70,6 +70,22 @@ export interface ProfileBasic {
   store_id: string | null;
 }
 
+export interface UploadRecord {
+  id: string;
+  program_id: string;
+  task_id: string;
+  uploaded_by: string;
+  file_url: string;
+  file_type: string;
+  file_name: string;
+  file_size: number;
+  status: string;
+  reviewed_by: string | null;
+  review_notes: string | null;
+  reviewed_at: string | null;
+  uploaded_at: string;
+}
+
 // ── Queries ──
 
 export function useDays() {
@@ -332,6 +348,38 @@ export function useSignOffDay() {
   });
 }
 
+// ── Upload hooks ──
+
+export function useUploadsForProgram(programId: string | undefined) {
+  return useQuery({
+    queryKey: ["uploads", programId],
+    enabled: !!programId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("uploads" as any)
+        .select("*")
+        .eq("program_id", programId!);
+      if (error) throw error;
+      return data as unknown as UploadRecord[];
+    },
+  });
+}
+
+export function usePendingUploads() {
+  return useQuery({
+    queryKey: ["pending-uploads"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("uploads" as any)
+        .select("*")
+        .eq("status", "pending_review")
+        .order("uploaded_at", { ascending: true });
+      if (error) throw error;
+      return data as unknown as UploadRecord[];
+    },
+  });
+}
+
 // ── Helpers ──
 
 const PHASE_LABELS: Record<string, string> = {
@@ -361,21 +409,11 @@ export function getAssociateStatus(
   ratings: PerformanceRating[],
   days: Day[]
 ): "on_track" | "behind" | "needs_attention" {
-  // Check for needs_work/not_attempted in last 2 days
-  const recentDayNumbers = [program.current_day, program.current_day - 1].filter((d) => d >= 1);
-  const recentDayIds = days
-    .filter((d) => recentDayNumbers.includes(d.day_number))
-    .map((d) => d.id);
-  const recentRatings = ratings.filter((r) => {
-    // We need task -> day mapping; we'll check by task_id existence in ratings
-    return true; // Simplified: check all ratings for this program
-  });
   const hasIssues = ratings.some(
     (r) => r.rating === "needs_work" || r.rating === "not_attempted"
   );
   if (hasIssues) return "needs_attention";
 
-  // Check if on track based on start_date
   const startDate = new Date(program.start_date);
   const today = new Date();
   const daysDiff = Math.floor((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
