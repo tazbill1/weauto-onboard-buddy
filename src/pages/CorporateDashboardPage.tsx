@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect } from "react";
+import { InviteFAB } from "@/components/InviteFAB";
 import { useNavigate } from "react-router-dom";
 import { AppShell } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
@@ -233,6 +234,7 @@ export default function CorporateDashboardPage() {
           </div>
         )}
       </div>
+      <InviteFAB />
     </AppShell>
   );
 }

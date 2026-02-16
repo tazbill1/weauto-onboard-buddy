@@ -3,8 +3,9 @@ import { AppShell } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { LogOut, Mail, Info } from "lucide-react";
+import { LogOut, Mail, Info, UserPlus } from "lucide-react";
 import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 
 const roleLabels: Record<string, string> = {
   associate: "Associate",
@@ -18,6 +19,8 @@ const APP_VERSION = "1.0.0";
 
 export default function ProfilePage() {
   const { profile, signOut } = useAuth();
+  const navigate = useNavigate();
+  const canInvite = profile?.role && ["sales_manager", "gm", "hr_admin", "corporate_admin"].includes(profile.role);
 
   useEffect(() => { document.title = "Profile — WEAuto Onboarding"; }, []);
 
@@ -53,6 +56,16 @@ export default function ProfilePage() {
             </span>
           </div>
         </Card>
+
+        {canInvite && (
+          <button
+            onClick={() => navigate("/invite")}
+            className="flex items-center gap-2 mt-4 p-3 rounded-xl border bg-primary/5 border-primary/20 hover:bg-primary/10 transition-colors text-sm font-medium text-primary w-full"
+          >
+            <UserPlus className="h-4 w-4" />
+            Invite Team Member
+          </button>
+        )}
 
         <a
           href="mailto:support@weauto.com?subject=WEAuto%20Onboarding%20Help"
