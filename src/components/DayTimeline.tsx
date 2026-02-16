@@ -12,7 +12,7 @@ export function DayTimeline({ days, currentDay, completedDays }: DayTimelineProp
 
   return (
     <div className="overflow-x-auto pb-2 -mx-4 px-4">
-      <div className="flex items-center gap-2 min-w-max">
+      <div className="flex items-center gap-3 min-w-max py-1">
         {days.map((day) => {
           const isCompleted = completedDays.has(day.day_number);
           const isCurrent = day.day_number === currentDay;
@@ -21,15 +21,15 @@ export function DayTimeline({ days, currentDay, completedDays }: DayTimelineProp
             <button
               key={day.id}
               onClick={() => navigate(`/day/${day.day_number}`)}
-              className="flex flex-col items-center gap-1 touch-target"
+              className="flex flex-col items-center gap-1 touch-target min-w-[44px]"
               title={day.title}
             >
               <div
-                className={`h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
+                className={`h-10 w-10 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
                   isCompleted
                     ? "bg-success text-success-foreground"
                     : isCurrent
-                    ? "bg-primary text-primary-foreground ring-4 ring-primary/30 animate-pulse"
+                    ? "bg-primary text-primary-foreground ring-4 ring-primary/30"
                     : "bg-muted text-muted-foreground"
                 }`}
               >

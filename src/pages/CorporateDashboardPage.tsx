@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { AppShell } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
@@ -28,6 +28,8 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
 
 export default function CorporateDashboardPage() {
   const navigate = useNavigate();
+
+  useEffect(() => { document.title = "All Stores — WEAuto"; }, []);
   const { data: programs, isLoading } = useAllPrograms();
   const { data: allTasks } = useAllTasks();
   const { data: days } = useDays();

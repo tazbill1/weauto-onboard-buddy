@@ -26,11 +26,13 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from "recharts";
-import { useMemo } from "react";
+import { useMemo, useEffect } from "react";
 
 export default function GMOverviewPage() {
   const { profile } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => { document.title = "Overview — WEAuto"; }, []);
   const { data: programs, isLoading } = useAllActivePrograms();
   const { data: allTasks } = useAllTasks();
   const { data: days } = useDays();
