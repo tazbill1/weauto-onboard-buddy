@@ -7,9 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronLeft, Check, X, Download } from "lucide-react";
+import { relativeTime } from "@/lib/dateUtils";
+import { useEffect } from "react";
 
 export default function ReviewUploadPage() {
   const { uploadId } = useParams();
@@ -21,15 +24,13 @@ export default function ReviewUploadPage() {
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
+  useEffect(() => { document.title = "Review Upload — WEAuto"; }, []);
+
   const { data: upload, isLoading } = useQuery({
     queryKey: ["upload", uploadId],
     enabled: !!uploadId,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("uploads" as any)
-        .select("*")
-        .eq("id", uploadId!)
-        .single();
+      const { data, error } = await supabase.from("uploads" as any).select("*").eq("id", uploadId!).single();
       if (error) throw error;
       return data as any;
     },
@@ -39,11 +40,7 @@ export default function ReviewUploadPage() {
     queryKey: ["task", upload?.task_id],
     enabled: !!upload?.task_id,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("tasks" as any)
-        .select("*")
-        .eq("id", upload.task_id)
-        .single();
+      const { data, error } = await supabase.from("tasks" as any).select("*").eq("id", upload.task_id).single();
       if (error) throw error;
       return data as any;
     },
@@ -53,11 +50,7 @@ export default function ReviewUploadPage() {
     queryKey: ["profile", upload?.uploaded_by],
     enabled: !!upload?.uploaded_by,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("full_name, email")
-        .eq("user_id", upload.uploaded_by)
-        .single();
+      const { data, error } = await supabase.from("profiles").select("full_name, email").eq("user_id", upload.uploaded_by).single();
       if (error) throw error;
       return data;
     },
@@ -74,32 +67,20 @@ export default function ReviewUploadPage() {
     try {
       const { error } = await supabase
         .from("uploads" as any)
-        .update({
-          status: action,
-          reviewed_by: user.id,
-          review_notes: notes || null,
-          reviewed_at: new Date().toISOString(),
-        } as any)
+        .update({ status: action, reviewed_by: user.id, review_notes: notes || null, reviewed_at: new Date().toISOString() } as any)
         .eq("id", uploadId);
       if (error) throw error;
 
-      // If approved, mark task as completed
       if (action === "approved") {
         await supabase
           .from("task_completions" as any)
-          .upsert({
-            program_id: upload.program_id,
-            task_id: upload.task_id,
-            associate_id: upload.uploaded_by,
-            status: "completed",
-            completed_at: new Date().toISOString(),
-          } as any, { onConflict: "program_id,task_id" });
+          .upsert({ program_id: upload.program_id, task_id: upload.task_id, associate_id: upload.uploaded_by, status: "completed", completed_at: new Date().toISOString() } as any, { onConflict: "program_id,task_id" });
       }
 
       queryClient.invalidateQueries({ queryKey: ["uploads"] });
       queryClient.invalidateQueries({ queryKey: ["pending-uploads"] });
       queryClient.invalidateQueries({ queryKey: ["completions"] });
-      toast({ title: action === "approved" ? "Approved!" : "Revision requested" });
+      toast({ title: action === "approved" ? "✅ Approved!" : "Revision requested" });
       navigate(-1);
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
@@ -127,21 +108,17 @@ export default function ReviewUploadPage() {
             <Card className="p-4">
               <p className="text-xs text-muted-foreground">{associateProfile?.full_name || "Associate"}</p>
               <h1 className="text-lg font-bold text-foreground mt-0.5">{task?.title || "Task"}</h1>
-              <p className="text-xs text-muted-foreground mt-1">{upload.file_name}</p>
+              <p className="text-xs text-muted-foreground mt-1">{upload.file_name} · {relativeTime(upload.uploaded_at)}</p>
             </Card>
 
-            {/* Media preview */}
             <Card className="overflow-hidden">
               {isVideo ? (
-                <video controls className="w-full max-h-[60vh]" src={upload.file_url}>
-                  Your browser does not support the video tag.
-                </video>
+                <video controls playsInline className="w-full max-h-[60vh]" src={upload.file_url} />
               ) : isImage ? (
-                <img src={upload.file_url} alt={upload.file_name} className="w-full max-h-[60vh] object-contain" />
+                <img src={upload.file_url} alt={upload.file_name} className="w-full max-h-[60vh] object-contain" loading="lazy" />
               ) : (
                 <div className="p-6 text-center">
-                  <a href={upload.file_url} target="_blank" rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 text-secondary underline">
+                  <a href={upload.file_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-secondary underline">
                     <Download className="h-4 w-4" /> Download {upload.file_name}
                   </a>
                 </div>
@@ -152,13 +129,7 @@ export default function ReviewUploadPage() {
               <>
                 <Card className="p-4 space-y-2">
                   <h3 className="text-sm font-bold text-foreground">Review Notes</h3>
-                  <Textarea
-                    placeholder="Add notes (required for revision requests)..."
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    className="min-h-[60px] text-sm"
-                    rows={3}
-                  />
+                  <Textarea placeholder="Add notes (required for revision requests)..." value={notes} onChange={(e) => setNotes(e.target.value)} className="min-h-[60px] text-sm" rows={3} />
                 </Card>
 
                 <div className="flex gap-3">
@@ -169,14 +140,19 @@ export default function ReviewUploadPage() {
                   >
                     <Check className="h-4 w-4" /> Approve
                   </Button>
-                  <Button
-                    variant="destructive"
-                    className="flex-1 h-12 gap-1.5"
+                  <ConfirmDialog
+                    title="Request Revision?"
+                    description="Are you sure you want to request a revision? The associate will need to resubmit."
+                    confirmLabel="Request Revision"
+                    confirmVariant="destructive"
+                    onConfirm={() => handleAction("rejected")}
                     disabled={submitting}
-                    onClick={() => handleAction("rejected")}
-                  >
-                    <X className="h-4 w-4" /> Request Revision
-                  </Button>
+                    trigger={
+                      <Button variant="destructive" className="flex-1 h-12 gap-1.5">
+                        <X className="h-4 w-4" /> Request Revision
+                      </Button>
+                    }
+                  />
                 </div>
               </>
             )}
