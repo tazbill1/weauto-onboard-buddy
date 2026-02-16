@@ -11,11 +11,14 @@ import {
   useManagedPrograms,
   useProfiles,
   useRatingsForProgram,
+  usePendingUploads,
   getPhaseLabel,
   getAssociateStatus,
 } from "@/hooks/useOnboardingData";
 import type { OnboardingProgram, PerformanceRating, ProfileBasic, Day } from "@/hooks/useOnboardingData";
-import { Users } from "lucide-react";
+import { Users, Video, Image, FileText, Clock } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 function StatusBadge({ status }: { status: "on_track" | "behind" | "needs_attention" }) {
   const config = {
@@ -29,6 +32,12 @@ function StatusBadge({ status }: { status: "on_track" | "behind" | "needs_attent
       {c.label}
     </span>
   );
+}
+
+function FileTypeIcon({ type }: { type: string }) {
+  if (type === "video") return <Video className="h-4 w-4 text-secondary" />;
+  if (type === "image") return <Image className="h-4 w-4 text-secondary" />;
+  return <FileText className="h-4 w-4 text-secondary" />;
 }
 
 function AssociateCard({
@@ -88,25 +97,66 @@ function AssociateCard({
   );
 }
 
+function PendingReviewItem({ upload, profile, task }: { upload: any; profile: any; task: any }) {
+  const navigate = useNavigate();
+  const timeAgo = upload.uploaded_at
+    ? new Date(upload.uploaded_at).toLocaleDateString()
+    : "";
+
+  return (
+    <button
+      onClick={() => navigate(`/review/${upload.id}`)}
+      className="flex items-center gap-3 w-full text-left p-3 rounded-xl hover:bg-muted/50 transition-colors touch-target"
+    >
+      <FileTypeIcon type={upload.file_type} />
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-foreground truncate">
+          {task?.title || "Task"}
+        </p>
+        <p className="text-xs text-muted-foreground truncate">
+          {profile?.full_name || "Associate"} · {timeAgo}
+        </p>
+      </div>
+      <Clock className="h-4 w-4 text-warning flex-shrink-0" />
+    </button>
+  );
+}
+
 export default function ManagerDashboardPage() {
   const { profile } = useAuth();
   const isManager = profile?.role === "sales_manager";
   const { data: managedPrograms, isLoading: managedLoading } = useManagedPrograms();
   const { data: allPrograms, isLoading: allLoading } = useAllActivePrograms();
   const { data: days } = useDays();
+  const { data: pendingUploads } = usePendingUploads();
 
-  // Use managed programs for sales_manager, all programs for gm/hr_admin/corporate_admin
   const programs = isManager ? managedPrograms : allPrograms;
   const isLoading = isManager ? managedLoading : allLoading;
 
   const associateIds = programs?.map((p) => p.associate_id) || [];
-  const { data: profiles } = useProfiles(associateIds);
+  const uploadUserIds = pendingUploads?.map((u) => u.uploaded_by) || [];
+  const allUserIds = [...new Set([...associateIds, ...uploadUserIds])];
+  const { data: profiles } = useProfiles(allUserIds);
   const profileMap = new Map(profiles?.map((p) => [p.user_id, p]));
 
-  // We'll fetch all ratings later per-program; for the list view, approximate with empty
-  // In a real app you'd batch this, but for MVP we calculate status with available data
+  // Fetch tasks for pending uploads
+  const taskIds = pendingUploads?.map((u) => u.task_id) || [];
+  const { data: pendingTasks } = useQuery({
+    queryKey: ["tasks-for-uploads", taskIds],
+    enabled: taskIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("tasks" as any)
+        .select("*")
+        .in("id", taskIds);
+      if (error) throw error;
+      return data as any[];
+    },
+  });
+  const taskMap = new Map(pendingTasks?.map((t: any) => [t.id, t]));
 
   const firstName = profile?.full_name?.split(" ")[0] || "Manager";
+  const pendingCount = pendingUploads?.length || 0;
 
   return (
     <AppShell>
@@ -118,30 +168,56 @@ export default function ManagerDashboardPage() {
           </p>
         </div>
 
-        {isLoading ? (
-          <div className="space-y-3">
-            <Skeleton className="h-32 w-full rounded-2xl" />
-            <Skeleton className="h-32 w-full rounded-2xl" />
-          </div>
-        ) : !programs?.length ? (
-          <Card className="p-8 text-center">
-            <Users className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-            <p className="text-sm text-muted-foreground">No active associates in onboarding</p>
-          </Card>
-        ) : (
-          <div className="space-y-3">
-            {programs.map((program) => (
-              <AssociateCard
-                key={program.id}
-                program={program}
-                profile={profileMap.get(program.associate_id)}
-                day={days?.find((d) => d.day_number === program.current_day)}
-                ratings={[]} // Ratings loaded on check-in screen
-                days={days || []}
-              />
-            ))}
+        {/* Pending Reviews */}
+        {pendingCount > 0 && (
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <h2 className="text-base font-bold text-foreground">Pending Reviews</h2>
+              <span className="bg-warning text-warning-foreground text-xs font-bold px-2 py-0.5 rounded-full">
+                {pendingCount}
+              </span>
+            </div>
+            <Card className="divide-y divide-border">
+              {pendingUploads!.map((upload) => (
+                <PendingReviewItem
+                  key={upload.id}
+                  upload={upload}
+                  profile={profileMap.get(upload.uploaded_by)}
+                  task={taskMap.get(upload.task_id)}
+                />
+              ))}
+            </Card>
           </div>
         )}
+
+        {/* Associates */}
+        <div>
+          <h2 className="text-base font-bold text-foreground mb-2">Associates</h2>
+          {isLoading ? (
+            <div className="space-y-3">
+              <Skeleton className="h-32 w-full rounded-2xl" />
+              <Skeleton className="h-32 w-full rounded-2xl" />
+            </div>
+          ) : !programs?.length ? (
+            <Card className="p-8 text-center">
+              <Users className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+              <p className="text-sm text-muted-foreground">No active associates in onboarding</p>
+            </Card>
+          ) : (
+            <div className="space-y-3">
+              {programs.map((program) => (
+                <AssociateCard
+                  key={program.id}
+                  program={program}
+                  profile={profileMap.get(program.associate_id)}
+                  day={days?.find((d) => d.day_number === program.current_day)}
+                  ratings={[]}
+                  days={days || []}
+                />
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </AppShell>
   );
