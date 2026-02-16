@@ -452,6 +452,20 @@ export function getSectionLabel(section: string) {
   return SECTION_LABELS[section] || section;
 }
 
+export function countBusinessDays(startDate: Date, endDate: Date): number {
+  let count = 0;
+  const current = new Date(startDate);
+  current.setDate(current.getDate() + 1);
+  while (current <= endDate) {
+    const dayOfWeek = current.getDay();
+    if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+      count++;
+    }
+    current.setDate(current.getDate() + 1);
+  }
+  return count;
+}
+
 export function getAssociateStatus(
   program: OnboardingProgram,
   ratings: PerformanceRating[],
@@ -464,8 +478,8 @@ export function getAssociateStatus(
 
   const startDate = new Date(program.start_date);
   const today = new Date();
-  const daysDiff = Math.floor((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
-  const expectedDay = Math.min(daysDiff + 1, 20);
+  const businessDays = countBusinessDays(startDate, today);
+  const expectedDay = Math.min(businessDays + 1, 20);
 
   if (program.current_day < expectedDay) return "behind";
   return "on_track";
