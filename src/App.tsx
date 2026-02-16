@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/lib/auth";
+import { RoleGuard } from "@/components/RoleGuard";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import HomePage from "./pages/HomePage";
@@ -46,17 +47,17 @@ function AppRoutes() {
       <Route path="/" element={<ProtectedRoute><HomePage /></ProtectedRoute>} />
       <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
       <Route path="/day/:dayNumber" element={<ProtectedRoute><DayViewPage /></ProtectedRoute>} />
-      <Route path="/checkin/:programId/:dayNumber" element={<ProtectedRoute><CheckInPage /></ProtectedRoute>} />
-      <Route path="/review/:uploadId" element={<ProtectedRoute><ReviewUploadPage /></ProtectedRoute>} />
+      <Route path="/checkin/:programId/:dayNumber" element={<ProtectedRoute><RoleGuard allowedRoles={['sales_manager', 'gm', 'corporate_admin']}><CheckInPage /></RoleGuard></ProtectedRoute>} />
+      <Route path="/review/:uploadId" element={<ProtectedRoute><RoleGuard allowedRoles={['sales_manager', 'gm', 'corporate_admin']}><ReviewUploadPage /></RoleGuard></ProtectedRoute>} />
       <Route path="/progress" element={<ProtectedRoute><PlaceholderPage title="My Progress" /></ProtectedRoute>} />
       <Route path="/content" element={<ProtectedRoute><PlaceholderPage title="Content Library" /></ProtectedRoute>} />
       <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
-      <Route path="/team" element={<ProtectedRoute><ManagerDashboardPage /></ProtectedRoute>} />
+      <Route path="/team" element={<ProtectedRoute><RoleGuard allowedRoles={['sales_manager', 'corporate_admin']}><ManagerDashboardPage /></RoleGuard></ProtectedRoute>} />
       <Route path="/reviews" element={<ProtectedRoute><PlaceholderPage title="Reviews" /></ProtectedRoute>} />
-      <Route path="/stores" element={<ProtectedRoute><GMOverviewPage /></ProtectedRoute>} />
-      <Route path="/store/:storeId" element={<ProtectedRoute><StoreDetailPage /></ProtectedRoute>} />
-      <Route path="/reports" element={<ProtectedRoute><ReportsPage /></ProtectedRoute>} />
-      <Route path="/content-admin" element={<ProtectedRoute><ContentAdminPage /></ProtectedRoute>} />
+      <Route path="/stores" element={<ProtectedRoute><RoleGuard allowedRoles={['gm', 'corporate_admin']}><GMOverviewPage /></RoleGuard></ProtectedRoute>} />
+      <Route path="/store/:storeId" element={<ProtectedRoute><RoleGuard allowedRoles={['gm', 'corporate_admin']}><StoreDetailPage /></RoleGuard></ProtectedRoute>} />
+      <Route path="/reports" element={<ProtectedRoute><RoleGuard allowedRoles={['gm', 'corporate_admin', 'hr_admin']}><ReportsPage /></RoleGuard></ProtectedRoute>} />
+      <Route path="/content-admin" element={<ProtectedRoute><RoleGuard allowedRoles={['corporate_admin']}><ContentAdminPage /></RoleGuard></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
