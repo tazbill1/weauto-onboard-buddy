@@ -67,7 +67,7 @@ export function BottomNav() {
   const pendingCount = isManagerRole ? (pendingUploads?.length || 0) : 0;
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-card safe-area-bottom">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-card shadow-[0_-2px_10px_rgba(0,0,0,0.06)] safe-area-bottom">
       <div className="flex items-stretch justify-around">
         {items.map((item) => {
           const isActive = location.pathname === item.path;

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import {
   useDays,
   useTasksForDay,
@@ -20,6 +21,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft, Check, AlertTriangle, X } from "lucide-react";
+import { useEffect } from "react";
 
 const RATING_OPTIONS = [
   { value: "meets_expectation", label: "Meets Expectation", icon: Check, color: "bg-success text-success-foreground", ring: "ring-success/30" },
@@ -34,15 +36,13 @@ export default function CheckInPage() {
   const { toast } = useToast();
   const dayNum = parseInt(dayNumber || "1", 10);
 
+  useEffect(() => { document.title = `Check-in Day ${dayNum} — WEAuto`; }, [dayNum]);
+
   const { data: program } = useQuery({
     queryKey: ["program", programId],
     enabled: !!programId,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("onboarding_programs" as any)
-        .select("*")
-        .eq("id", programId!)
-        .single();
+      const { data, error } = await supabase.from("onboarding_programs" as any).select("*").eq("id", programId!).single();
       if (error) throw error;
       return data as unknown as OnboardingProgram;
     },
@@ -58,29 +58,22 @@ export default function CheckInPage() {
   const upsertRating = useUpsertRating();
   const signOffDay = useSignOffDay();
 
-  // Only tasks that require rating
   const rateableTasks = useMemo(() => tasks?.filter((t) => t.requires_rating) || [], [tasks]);
 
-  // Local state for ratings and notes
   const [localRatings, setLocalRatings] = useState<Record<string, string>>({});
   const [localNotes, setLocalNotes] = useState<Record<string, string>>({});
   const [overallNotes, setOverallNotes] = useState("");
   const [signingOff, setSigningOff] = useState(false);
 
-  // Merge existing ratings with local state
   const ratingMap = useMemo(() => {
     const map: Record<string, string> = {};
-    existingRatings?.forEach((r) => {
-      map[r.task_id] = r.rating;
-    });
+    existingRatings?.forEach((r) => { map[r.task_id] = r.rating; });
     return { ...map, ...localRatings };
   }, [existingRatings, localRatings]);
 
   const notesMap = useMemo(() => {
     const map: Record<string, string> = {};
-    existingRatings?.forEach((r) => {
-      if (r.notes) map[r.task_id] = r.notes;
-    });
+    existingRatings?.forEach((r) => { if (r.notes) map[r.task_id] = r.notes; });
     return { ...map, ...localNotes };
   }, [existingRatings, localNotes]);
 
@@ -89,13 +82,7 @@ export default function CheckInPage() {
   const handleRate = (taskId: string, rating: string) => {
     setLocalRatings((prev) => ({ ...prev, [taskId]: rating }));
     if (user && programId) {
-      upsertRating.mutate({
-        programId,
-        taskId,
-        ratedBy: user.id,
-        rating,
-        notes: localNotes[taskId] || notesMap[taskId] || null,
-      });
+      upsertRating.mutate({ programId, taskId, ratedBy: user.id, rating, notes: localNotes[taskId] || notesMap[taskId] || null });
     }
   };
 
@@ -105,13 +92,7 @@ export default function CheckInPage() {
 
   const handleNoteBlur = (taskId: string) => {
     if (user && programId && ratingMap[taskId]) {
-      upsertRating.mutate({
-        programId,
-        taskId,
-        ratedBy: user.id,
-        rating: ratingMap[taskId],
-        notes: localNotes[taskId] || notesMap[taskId] || null,
-      });
+      upsertRating.mutate({ programId, taskId, ratedBy: user.id, rating: ratingMap[taskId], notes: localNotes[taskId] || notesMap[taskId] || null });
     }
   };
 
@@ -119,13 +100,8 @@ export default function CheckInPage() {
     if (!user || !programId) return;
     setSigningOff(true);
     try {
-      await signOffDay.mutateAsync({
-        programId,
-        dayNumber: dayNum,
-        managerId: user.id,
-        overallNotes: overallNotes || null,
-      });
-      toast({ title: `Day ${dayNum} signed off!`, description: "Ratings have been saved." });
+      await signOffDay.mutateAsync({ programId, dayNumber: dayNum, managerId: user.id, overallNotes: overallNotes || null });
+      toast({ title: `✅ Day ${dayNum} signed off!`, description: "Ratings have been saved." });
       navigate(-1);
     } catch {
       toast({ title: "Error", description: "Failed to sign off.", variant: "destructive" });
@@ -137,37 +113,22 @@ export default function CheckInPage() {
   return (
     <AppShell>
       <div className="px-4 py-4 animate-fade-in space-y-4">
-        <Button
-          variant="ghost"
-          size="sm"
-          className="gap-1 -ml-2 text-muted-foreground"
-          onClick={() => navigate(-1)}
-        >
+        <Button variant="ghost" size="sm" className="gap-1 -ml-2 text-muted-foreground" onClick={() => navigate(-1)}>
           <ChevronLeft className="h-4 w-4" /> Back
         </Button>
 
-        {/* Header */}
         {isLoading || !day ? (
           <Skeleton className="h-24 w-full rounded-2xl" />
         ) : (
           <Card className="p-5">
-            <p className="text-xs font-semibold uppercase tracking-wider text-secondary">
-              Check-in · {getPhaseLabel(day.phase)}
-            </p>
-            <h1 className="mt-1 text-lg font-bold text-foreground">
-              Day {dayNum}: {day.title}
-            </h1>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              {associateProfile?.full_name || "Associate"}
-            </p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-secondary">Check-in · {getPhaseLabel(day.phase)}</p>
+            <h1 className="mt-1 text-lg font-bold text-foreground">Day {dayNum}: {day.title}</h1>
+            <p className="text-sm text-muted-foreground mt-0.5">{associateProfile?.full_name || "Associate"}</p>
           </Card>
         )}
 
-        {/* Rating cards */}
         {rateableTasks.length === 0 ? (
-          <Card className="p-5 text-center text-sm text-muted-foreground">
-            No tasks require rating for this day.
-          </Card>
+          <Card className="p-5 text-center text-sm text-muted-foreground">No tasks require rating for this day.</Card>
         ) : (
           <div className="space-y-3">
             {rateableTasks.map((task) => {
@@ -178,32 +139,44 @@ export default function CheckInPage() {
                 <Card key={task.id} className="p-4 space-y-3">
                   <div>
                     <h3 className="text-sm font-bold text-foreground">{task.title}</h3>
-                    {task.description && (
-                      <p className="text-xs text-muted-foreground mt-0.5">{task.description}</p>
-                    )}
+                    {task.description && <p className="text-xs text-muted-foreground mt-0.5">{task.description}</p>}
                   </div>
 
                   <div className="flex gap-2">
                     {RATING_OPTIONS.map((opt) => {
                       const Icon = opt.icon;
                       const isSelected = currentRating === opt.value;
-                      return (
+                      const needsConfirm = opt.value === "not_attempted" && !isSelected;
+
+                      const ratingButton = (
                         <button
                           key={opt.value}
-                          onClick={() => handleRate(task.id, opt.value)}
+                          onClick={needsConfirm ? undefined : () => handleRate(task.id, opt.value)}
                           className={`flex-1 flex flex-col items-center gap-1 rounded-xl py-3 px-2 border-2 transition-all touch-target ${
-                            isSelected
-                              ? `${opt.color} border-transparent ring-4 ${opt.ring}`
-                              : "border-border bg-card hover:bg-muted/50"
+                            isSelected ? `${opt.color} border-transparent ring-4 ${opt.ring}` : "border-border bg-card hover:bg-muted/50"
                           }`}
                         >
                           <Icon className="h-5 w-5" />
-                          <span className="text-[10px] font-semibold leading-tight text-center">
-                            {opt.label}
-                          </span>
+                          <span className="text-[10px] font-semibold leading-tight text-center">{opt.label}</span>
                           {isSelected && <Check className="h-3 w-3" />}
                         </button>
                       );
+
+                      if (needsConfirm) {
+                        return (
+                          <ConfirmDialog
+                            key={opt.value}
+                            title="Mark as Not Attempted?"
+                            description="This will block day completion until addressed."
+                            confirmLabel="Mark Not Attempted"
+                            confirmVariant="destructive"
+                            onConfirm={() => handleRate(task.id, opt.value)}
+                            trigger={ratingButton}
+                          />
+                        );
+                      }
+
+                      return ratingButton;
                     })}
                   </div>
 
@@ -214,9 +187,7 @@ export default function CheckInPage() {
                     onBlur={() => handleNoteBlur(task.id)}
                     className="min-h-[40px] text-sm resize-none"
                     rows={1}
-                    onFocus={(e) => {
-                      e.target.rows = 3;
-                    }}
+                    onFocus={(e) => { e.target.rows = 3; (e.target as HTMLElement).scrollIntoView({ behavior: "smooth", block: "center" }); }}
                   />
                 </Card>
               );
@@ -224,7 +195,6 @@ export default function CheckInPage() {
           </div>
         )}
 
-        {/* Overall notes */}
         <Card className="p-4 space-y-2">
           <h3 className="text-sm font-bold text-foreground">Overall Day Notes</h3>
           <Textarea
@@ -233,21 +203,26 @@ export default function CheckInPage() {
             onChange={(e) => setOverallNotes(e.target.value)}
             className="min-h-[60px] text-sm"
             rows={3}
+            onFocus={(e) => { (e.target as HTMLElement).scrollIntoView({ behavior: "smooth", block: "center" }); }}
           />
         </Card>
 
-        {/* Sign off button */}
-        <Button
-          className="w-full h-12 text-base font-semibold"
+        <ConfirmDialog
+          title={`Sign off on Day ${dayNum}?`}
+          description={`Confirm sign-off for Day ${dayNum}? This will be recorded with your name and timestamp.`}
+          confirmLabel={`Sign Off Day ${dayNum}`}
+          onConfirm={handleSignOff}
           disabled={!allRated || signingOff}
-          onClick={handleSignOff}
-        >
-          {signingOff
-            ? "Signing off..."
-            : allRated
-            ? `Sign Off on Day ${dayNum}`
-            : `Rate all tasks to sign off (${Object.keys(ratingMap).length}/${rateableTasks.length})`}
-        </Button>
+          trigger={
+            <Button className="w-full h-12 text-base font-semibold" disabled={!allRated || signingOff}>
+              {signingOff
+                ? "Signing off..."
+                : allRated
+                ? `Sign Off on Day ${dayNum}`
+                : `Rate all tasks to sign off (${Object.keys(ratingMap).length}/${rateableTasks.length})`}
+            </Button>
+          }
+        />
       </div>
     </AppShell>
   );

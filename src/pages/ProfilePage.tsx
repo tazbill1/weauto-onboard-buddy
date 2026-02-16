@@ -3,7 +3,8 @@ import { AppShell } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { LogOut } from "lucide-react";
+import { LogOut, Mail, Info } from "lucide-react";
+import { useEffect } from "react";
 
 const roleLabels: Record<string, string> = {
   associate: "Associate",
@@ -13,8 +14,12 @@ const roleLabels: Record<string, string> = {
   corporate_admin: "Corporate Admin",
 };
 
+const APP_VERSION = "1.0.0";
+
 export default function ProfilePage() {
   const { profile, signOut } = useAuth();
+
+  useEffect(() => { document.title = "Profile — WEAuto Onboarding"; }, []);
 
   const initials = (profile?.full_name || "U")
     .split(" ")
@@ -49,14 +54,27 @@ export default function ProfilePage() {
           </div>
         </Card>
 
+        <a
+          href="mailto:support@weauto.com?subject=WEAuto%20Onboarding%20Help"
+          className="flex items-center gap-2 mt-4 p-3 rounded-xl border bg-card hover:bg-muted/50 transition-colors text-sm text-muted-foreground"
+        >
+          <Mail className="h-4 w-4" />
+          Need Help? Contact Support
+        </a>
+
         <Button
           variant="outline"
-          className="mt-6 h-12 w-full gap-2 text-destructive border-destructive/20 hover:bg-destructive/5"
+          className="mt-4 h-12 w-full gap-2 text-destructive border-destructive/20 hover:bg-destructive/5"
           onClick={signOut}
         >
           <LogOut className="h-4 w-4" />
           Sign Out
         </Button>
+
+        <div className="mt-8 flex items-center justify-center gap-1 text-[11px] text-muted-foreground/50">
+          <Info className="h-3 w-3" />
+          WEAuto Onboarding v{APP_VERSION}
+        </div>
       </div>
     </AppShell>
   );

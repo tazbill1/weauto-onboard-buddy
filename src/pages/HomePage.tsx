@@ -5,6 +5,8 @@ import { Card } from "@/components/ui/card";
 import { ProgressRing } from "@/components/ProgressRing";
 import { DayTimeline } from "@/components/DayTimeline";
 import { TaskItem } from "@/components/TaskItem";
+import { OnboardingFlow, useShowOnboarding } from "@/components/OnboardingFlow";
+import { EmptyState } from "@/components/ErrorStates";
 import GMOverviewPage from "./GMOverviewPage";
 import CorporateDashboardPage from "./CorporateDashboardPage";
 import HRAdminPage from "./HRAdminPage";
@@ -20,22 +22,17 @@ import {
   getSectionLabel,
 } from "@/hooks/useOnboardingData";
 import { useNotifications } from "@/hooks/useNotifications";
+import { relativeTime } from "@/lib/dateUtils";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Clock, Upload, CheckCircle2, AlertTriangle, Trophy } from "lucide-react";
-
-const roleGreetings: Record<string, string> = {
-  associate: "Let's keep your onboarding on track!",
-  sales_manager: "Here's how your team is doing today.",
-  gm: "Store performance overview at a glance.",
-  hr_admin: "Team onboarding status summary.",
-  corporate_admin: "Organization-wide insights.",
-};
+import { Clock, Upload, CheckCircle2, AlertTriangle, Trophy, Inbox } from "lucide-react";
+import { useEffect } from "react";
 
 export default function HomePage() {
   const { profile } = useAuth();
   const navigate = useNavigate();
   const firstName = profile?.full_name?.split(" ")[0] || "there";
   const isAssociate = profile?.role === "associate";
+  const { show: showOnboarding, dismiss: dismissOnboarding } = useShowOnboarding();
 
   const { data: days, isLoading: daysLoading } = useDays();
   const { data: program } = useMyProgram();
@@ -45,17 +42,16 @@ export default function HomePage() {
   const { data: notifications } = useNotifications();
   const recentUnread = notifications?.filter((n) => !n.is_read).slice(0, 3) || [];
 
-  // Get current day data
+  useEffect(() => { document.title = "Home — WEAuto Onboarding"; }, []);
+
   const currentDayNumber = program?.current_day || 1;
   const currentDay = days?.find((d) => d.day_number === currentDayNumber);
   const { data: currentDayTasks } = useTasksForDay(currentDay?.id);
 
-  // Calculate progress
   const totalTasks = allTasks?.length || 0;
   const completedCount = completions?.filter((c) => c.status === "completed").length || 0;
   const progress = totalTasks > 0 ? (completedCount / totalTasks) * 100 : 0;
 
-  // Completed days: a day is complete if all its tasks are completed
   const completedDays = new Set<number>();
   if (days && allTasks && completions) {
     for (const day of days) {
@@ -66,7 +62,6 @@ export default function HomePage() {
     }
   }
 
-  // Group current day tasks by section
   const tasksBySection = (currentDayTasks || []).reduce((acc, task) => {
     if (!acc[task.section]) acc[task.section] = [];
     acc[task.section].push(task);
@@ -75,23 +70,27 @@ export default function HomePage() {
 
   const completionMap = new Map(completions?.map((c) => [c.task_id, c]));
 
+  // Role-specific home pages
   if (profile?.role === "gm") return <GMOverviewPage />;
   if (profile?.role === "corporate_admin") return <CorporateDashboardPage />;
   if (profile?.role === "hr_admin") return <HRAdminPage />;
   if (profile?.role === "sales_manager") return <ManagerDashboardPage />;
 
+  // Show onboarding flow for first-time associates
+  if (isAssociate && showOnboarding) {
+    return <OnboardingFlow onComplete={dismissOnboarding} />;
+  }
+
   return (
     <AppShell>
       <div className="px-4 py-6 animate-fade-in space-y-6">
-        {/* Greeting */}
         <div>
           <h1 className="text-2xl font-bold text-foreground">Hi, {firstName} 👋</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            {roleGreetings.associate}
+            Let's keep your onboarding on track!
           </p>
         </div>
 
-        {/* Hero Card */}
         {daysLoading ? (
           <Skeleton className="h-48 w-full rounded-2xl" />
         ) : (
@@ -106,9 +105,7 @@ export default function HomePage() {
                   Day {currentDayNumber}
                   <span className="text-lg font-medium text-muted-foreground"> / 20</span>
                 </p>
-                <p className="mt-1 text-sm font-medium text-foreground">
-                  {currentDay?.title}
-                </p>
+                <p className="mt-1 text-sm font-medium text-foreground">{currentDay?.title}</p>
               </div>
               <ProgressRing progress={progress} size={100} strokeWidth={7} />
             </div>
@@ -122,11 +119,8 @@ export default function HomePage() {
             <Card className="divide-y divide-border overflow-hidden">
               {recentUnread.map((n) => {
                 const iconMap: Record<string, typeof Clock> = {
-                  behind_schedule: Clock,
-                  deliverable_submitted: Upload,
-                  checkin_complete: CheckCircle2,
-                  needs_work: AlertTriangle,
-                  milestone: Trophy,
+                  behind_schedule: Clock, deliverable_submitted: Upload, checkin_complete: CheckCircle2,
+                  needs_work: AlertTriangle, milestone: Trophy,
                 };
                 const colorMap: Record<string, string> = {
                   behind_schedule: "text-destructive bg-destructive/10",
@@ -137,17 +131,14 @@ export default function HomePage() {
                 };
                 const Icon = iconMap[n.type] || Clock;
                 return (
-                  <button
-                    key={n.id}
-                    onClick={() => navigate("/notifications")}
-                    className="flex items-start gap-3 w-full text-left p-3 hover:bg-muted/50 transition-colors"
-                  >
+                  <button key={n.id} onClick={() => navigate("/notifications")} className="flex items-start gap-3 w-full text-left p-3 hover:bg-muted/50 transition-colors">
                     <div className={`mt-0.5 h-8 w-8 rounded-full flex items-center justify-center flex-shrink-0 ${colorMap[n.type] || ""}`}>
                       <Icon className="h-4 w-4" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-foreground truncate">{n.title}</p>
                       <p className="text-xs text-muted-foreground line-clamp-1">{n.body}</p>
+                      <p className="text-[10px] text-muted-foreground/60 mt-0.5">{relativeTime(n.created_at)}</p>
                     </div>
                     <span className="h-2 w-2 rounded-full bg-secondary flex-shrink-0 mt-2" />
                   </button>
@@ -161,11 +152,11 @@ export default function HomePage() {
         <div>
           <h2 className="text-base font-bold text-foreground mb-3">Today's Tasks</h2>
           {!program ? (
-            <Card className="p-5 text-center">
-              <p className="text-sm text-muted-foreground">
-                No active onboarding program yet. Ask your manager to get started!
-              </p>
-            </Card>
+            <EmptyState
+              icon={Inbox}
+              title="No active program yet"
+              description="HR will set up your onboarding when you're ready to begin."
+            />
           ) : (
             <div className="space-y-4">
               {Object.entries(tasksBySection).map(([section, tasks]) => (
@@ -195,15 +186,10 @@ export default function HomePage() {
           )}
         </div>
 
-        {/* 20-Day Timeline */}
         {days && days.length > 0 && (
           <div>
             <h2 className="text-base font-bold text-foreground mb-3">Your Journey</h2>
-            <DayTimeline
-              days={days}
-              currentDay={currentDayNumber}
-              completedDays={completedDays}
-            />
+            <DayTimeline days={days} currentDay={currentDayNumber} completedDays={completedDays} />
           </div>
         )}
       </div>
