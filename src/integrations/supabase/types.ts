@@ -14,6 +14,41 @@ export type Database = {
   }
   public: {
     Tables: {
+      daily_signoffs: {
+        Row: {
+          day_number: number
+          id: string
+          manager_id: string
+          overall_notes: string | null
+          program_id: string
+          signed_off_at: string
+        }
+        Insert: {
+          day_number: number
+          id?: string
+          manager_id: string
+          overall_notes?: string | null
+          program_id: string
+          signed_off_at?: string
+        }
+        Update: {
+          day_number?: number
+          id?: string
+          manager_id?: string
+          overall_notes?: string | null
+          program_id?: string
+          signed_off_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_signoffs_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_programs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       days: {
         Row: {
           created_at: string
@@ -98,6 +133,51 @@ export type Database = {
             columns: ["store_id"]
             isOneToOne: false
             referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      performance_ratings: {
+        Row: {
+          id: string
+          notes: string | null
+          program_id: string
+          rated_at: string
+          rated_by: string
+          rating: string
+          task_id: string
+        }
+        Insert: {
+          id?: string
+          notes?: string | null
+          program_id: string
+          rated_at?: string
+          rated_by: string
+          rating: string
+          task_id: string
+        }
+        Update: {
+          id?: string
+          notes?: string | null
+          program_id?: string
+          rated_at?: string
+          rated_by?: string
+          rating?: string
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "performance_ratings_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_programs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "performance_ratings_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
             referencedColumns: ["id"]
           },
         ]
