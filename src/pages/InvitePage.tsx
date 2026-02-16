@@ -19,7 +19,7 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Send, RotateCw, XCircle, UserPlus } from "lucide-react";
+import { Send, RotateCw, XCircle, UserPlus, Copy, CheckCheck, Link as LinkIcon } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
 const roleLabels: Record<string, string> = {
@@ -53,6 +53,8 @@ export default function InvitePage() {
   const [managerId, setManagerId] = useState("");
   const [autoStart, setAutoStart] = useState(true);
   const [sending, setSending] = useState(false);
+  const [lastInviteLink, setLastInviteLink] = useState<string | null>(null);
+  const [linkCopied, setLinkCopied] = useState(false);
 
   const myRole = profile?.role as AppRole;
   const allowedRoles = useMemo(() => getAllowedRoles(myRole), [myRole]);
@@ -116,6 +118,8 @@ export default function InvitePage() {
   const handleSend = async () => {
     if (!email || !storeId) return;
     setSending(true);
+    setLastInviteLink(null);
+    setLinkCopied(false);
     try {
       // Check for existing pending invite
       const { data: existing } = await supabase
@@ -145,18 +149,27 @@ export default function InvitePage() {
 
       if (error) throw error;
 
-      // Send invite email
-      await supabase.functions.invoke("send-invite-email", {
-        body: {
-          to: email,
-          inviterName: profile?.full_name || profile?.email || "A manager",
-          role,
-          storeName,
-          token: (invite as any).token,
-        },
-      });
+      const token = (invite as any).token;
+      const appUrl = window.location.origin;
+      const inviteUrl = `${appUrl}/register?invite=${token}`;
+      setLastInviteLink(inviteUrl);
 
-      toast({ title: "Invite sent!", description: `Invitation sent to ${email}` });
+      // Try sending email (best-effort, don't block on failure)
+      try {
+        await supabase.functions.invoke("send-invite-email", {
+          body: {
+            to: email,
+            inviterName: profile?.full_name || profile?.email || "A manager",
+            role,
+            storeName,
+            token,
+          },
+        });
+      } catch {
+        // Email failed silently — user can share link manually
+      }
+
+      toast({ title: "Invite created!", description: `Share the link below with ${email}` });
       setEmail("");
       setRole("associate");
       setManagerId(myRole === "sales_manager" ? profile?.user_id || "" : "");
@@ -298,6 +311,30 @@ export default function InvitePage() {
             <Send className="h-4 w-4" />
             {sending ? "Sending…" : "Send Invite"}
           </Button>
+
+          {lastInviteLink && (
+            <div className="rounded-lg border bg-muted/50 p-3 space-y-2">
+              <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                <LinkIcon className="h-3 w-3" /> Invite Link (share manually if email didn't arrive)
+              </p>
+              <div className="flex gap-2">
+                <Input value={lastInviteLink} readOnly className="text-xs h-9 font-mono" />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-9 gap-1 shrink-0"
+                  onClick={() => {
+                    navigator.clipboard.writeText(lastInviteLink);
+                    setLinkCopied(true);
+                    setTimeout(() => setLinkCopied(false), 2000);
+                  }}
+                >
+                  {linkCopied ? <CheckCheck className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                  {linkCopied ? "Copied" : "Copy"}
+                </Button>
+              </div>
+            </div>
+          )}
         </Card>
 
         {/* Invite History */}
@@ -336,6 +373,18 @@ export default function InvitePage() {
                         variant="outline"
                         size="sm"
                         className="flex-1 gap-1"
+                        onClick={() => {
+                          const link = `${window.location.origin}/register?invite=${inv.token}`;
+                          navigator.clipboard.writeText(link);
+                          toast({ title: "Link copied!", description: "Invite link copied to clipboard" });
+                        }}
+                      >
+                        <Copy className="h-3.5 w-3.5" /> Copy Link
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1 gap-1"
                         onClick={() => handleResend(inv)}
                       >
                         <RotateCw className="h-3.5 w-3.5" /> Resend
@@ -347,8 +396,8 @@ export default function InvitePage() {
                         confirmVariant="destructive"
                         onConfirm={() => handleRevoke(inv.id)}
                         trigger={
-                          <Button variant="outline" size="sm" className="flex-1 gap-1 text-destructive border-destructive/20 hover:bg-destructive/5">
-                            <XCircle className="h-3.5 w-3.5" /> Revoke
+                          <Button variant="outline" size="sm" className="gap-1 text-destructive border-destructive/20 hover:bg-destructive/5">
+                            <XCircle className="h-3.5 w-3.5" />
                           </Button>
                         }
                       />
