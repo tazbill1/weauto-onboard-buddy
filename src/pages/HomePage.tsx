@@ -5,6 +5,10 @@ import { Card } from "@/components/ui/card";
 import { ProgressRing } from "@/components/ProgressRing";
 import { DayTimeline } from "@/components/DayTimeline";
 import { TaskItem } from "@/components/TaskItem";
+import GMOverviewPage from "./GMOverviewPage";
+import CorporateDashboardPage from "./CorporateDashboardPage";
+import HRAdminPage from "./HRAdminPage";
+import ManagerDashboardPage from "./ManagerDashboardPage";
 import {
   useDays,
   useMyProgram,
@@ -71,22 +75,10 @@ export default function HomePage() {
 
   const completionMap = new Map(completions?.map((c) => [c.task_id, c]));
 
-  if (!isAssociate) {
-    // Non-associate home (unchanged from original)
-    return (
-      <AppShell>
-        <div className="px-4 py-6 animate-fade-in">
-          <h1 className="text-2xl font-bold text-foreground">Hi, {firstName} 👋</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {roleGreetings[profile?.role || "associate"]}
-          </p>
-          <Card className="mt-6 p-6 text-center text-muted-foreground">
-            Dashboard coming soon for {profile?.role} role.
-          </Card>
-        </div>
-      </AppShell>
-    );
-  }
+  if (profile?.role === "gm") return <GMOverviewPage />;
+  if (profile?.role === "corporate_admin") return <CorporateDashboardPage />;
+  if (profile?.role === "hr_admin") return <HRAdminPage />;
+  if (profile?.role === "sales_manager") return <ManagerDashboardPage />;
 
   return (
     <AppShell>
