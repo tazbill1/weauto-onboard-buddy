@@ -105,9 +105,10 @@ Deno.serve(async (req) => {
 
     if (!resendRes.ok) {
       console.error("Resend error:", resendData);
+      // Return 200 with warning so invite flow isn't blocked
       return new Response(
-        JSON.stringify({ error: "Email send failed", details: resendData }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ success: false, warning: "Email could not be sent. Share the invite link manually.", details: resendData }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
