@@ -90,6 +90,63 @@ export type Database = {
           },
         ]
       }
+      notifications: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          is_emailed: boolean
+          is_read: boolean
+          related_day: number | null
+          related_program_id: string | null
+          related_task_id: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          is_emailed?: boolean
+          is_read?: boolean
+          related_day?: number | null
+          related_program_id?: string | null
+          related_task_id?: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          is_emailed?: boolean
+          is_read?: boolean
+          related_day?: number | null
+          related_program_id?: string | null
+          related_task_id?: string | null
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_related_program_id_fkey"
+            columns: ["related_program_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_programs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_related_task_id_fkey"
+            columns: ["related_task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       onboarding_programs: {
         Row: {
           actual_end_date: string | null
