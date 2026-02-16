@@ -1,5 +1,27 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+async function sendEmail(to: string, subject: string, body: string, notificationId: string | undefined, supabase: any) {
+  const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+  if (!RESEND_API_KEY) return;
+
+  const appUrl = Deno.env.get("APP_URL") || "https://id-preview--56e54c4e-d633-4381-af92-124ccaa0d16d.lovable.app";
+
+  const htmlEmail = `<!DOCTYPE html><html><body style="margin:0;padding:0;background-color:#f0f4f8;font-family:Inter,sans-serif;"><table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f0f4f8;padding:32px 16px;"><tr><td align="center"><table width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background-color:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);"><tr><td style="background-color:#1e3a5f;padding:24px 32px;text-align:center;"><h1 style="margin:0;color:#fff;font-size:22px;font-weight:800;">WEAuto</h1><p style="margin:4px 0 0;color:rgba(255,255,255,0.7);font-size:12px;">Onboarding Program</p></td></tr><tr><td style="padding:32px;"><h2 style="margin:0 0 12px;color:#1e3a5f;font-size:18px;font-weight:700;">${subject}</h2><p style="margin:0 0 24px;color:#4a5568;font-size:14px;line-height:1.6;">${body}</p><a href="${appUrl}/notifications" style="display:inline-block;background-color:#2b6cb0;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-size:14px;font-weight:600;">View in App</a></td></tr><tr><td style="padding:20px 32px;border-top:1px solid #e2e8f0;text-align:center;"><p style="margin:0;color:#a0aec0;font-size:11px;">Automated notification from WEAuto Onboarding.</p></td></tr></table></td></tr></table></body></html>`;
+
+  try {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ from: "WEAuto Onboarding <onboarding@resend.dev>", to: [to], subject: `WEAuto: ${subject}`, html: htmlEmail }),
+    });
+    if (res.ok && notificationId) {
+      await supabase.from("notifications").update({ is_emailed: true }).eq("id", notificationId);
+    }
+  } catch (e) {
+    console.error("Email send failed:", e);
+  }
+}
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -82,22 +104,40 @@ Deno.serve(async (req) => {
       const body = `${name} is on Day ${program.current_day} but should be on Day ${expectedDay}. Please review and catch up.`;
 
       // Notify associate
-      await supabase.from("notifications").insert({
+      const { data: assocNotif } = await supabase.from("notifications").insert({
         user_id: program.associate_id,
         type: "behind_schedule",
         title: "Onboarding Behind Schedule",
         body,
         related_program_id: program.id,
-      });
+      }).select("id").single();
 
       // Notify manager
-      await supabase.from("notifications").insert({
+      const { data: mgrNotif } = await supabase.from("notifications").insert({
         user_id: program.manager_id,
         type: "behind_schedule",
         title: "Onboarding Behind Schedule",
         body,
         related_program_id: program.id,
-      });
+      }).select("id").single();
+
+      // Send emails
+      const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+      if (RESEND_API_KEY) {
+        // Email associate
+        if (associateProfile?.email) {
+          await sendEmail(associateProfile.email, "Onboarding Behind Schedule", body, assocNotif?.id, supabase);
+        }
+        // Get manager email and send
+        const { data: managerProfile } = await supabase
+          .from("profiles")
+          .select("email")
+          .eq("user_id", program.manager_id)
+          .single();
+        if (managerProfile?.email) {
+          await sendEmail(managerProfile.email, "Onboarding Behind Schedule", body, mgrNotif?.id, supabase);
+        }
+      }
 
       sentCount++;
     }
