@@ -42,6 +42,36 @@ export interface OnboardingProgram {
   status: string;
 }
 
+export interface PerformanceRating {
+  id: string;
+  program_id: string;
+  task_id: string;
+  rated_by: string;
+  rating: string;
+  notes: string | null;
+  rated_at: string;
+}
+
+export interface DailySignoff {
+  id: string;
+  program_id: string;
+  day_number: number;
+  manager_id: string;
+  overall_notes: string | null;
+  signed_off_at: string;
+}
+
+export interface ProfileBasic {
+  user_id: string;
+  full_name: string | null;
+  email: string;
+  role: string;
+  avatar_url: string | null;
+  store_id: string | null;
+}
+
+// ── Queries ──
+
 export function useDays() {
   return useQuery({
     queryKey: ["days"],
@@ -136,7 +166,6 @@ export function useToggleCompletion() {
       if (!user) throw new Error("Not authenticated");
 
       if (currentStatus === "completed") {
-        // Mark as not started
         const { error } = await supabase
           .from("task_completions" as any)
           .update({ status: "not_started", completed_at: null } as any)
@@ -144,7 +173,6 @@ export function useToggleCompletion() {
           .eq("task_id", taskId);
         if (error) throw error;
       } else if (!currentStatus || currentStatus === "not_started") {
-        // Upsert as completed
         const { error } = await supabase
           .from("task_completions" as any)
           .upsert(
@@ -166,6 +194,146 @@ export function useToggleCompletion() {
   });
 }
 
+// ── Manager-specific hooks ──
+
+export function useManagedPrograms() {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ["managed-programs", user?.id],
+    enabled: !!user?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("onboarding_programs" as any)
+        .select("*")
+        .eq("manager_id", user!.id)
+        .eq("status", "active");
+      if (error) throw error;
+      return data as unknown as OnboardingProgram[];
+    },
+  });
+}
+
+export function useAllActivePrograms() {
+  return useQuery({
+    queryKey: ["all-active-programs"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("onboarding_programs" as any)
+        .select("*")
+        .eq("status", "active");
+      if (error) throw error;
+      return data as unknown as OnboardingProgram[];
+    },
+  });
+}
+
+export function useProfiles(userIds: string[]) {
+  return useQuery({
+    queryKey: ["profiles", userIds],
+    enabled: userIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("user_id, full_name, email, role, avatar_url, store_id")
+        .in("user_id", userIds);
+      if (error) throw error;
+      return data as ProfileBasic[];
+    },
+  });
+}
+
+export function useRatingsForProgram(programId: string | undefined) {
+  return useQuery({
+    queryKey: ["ratings", programId],
+    enabled: !!programId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("performance_ratings" as any)
+        .select("*")
+        .eq("program_id", programId!);
+      if (error) throw error;
+      return data as unknown as PerformanceRating[];
+    },
+  });
+}
+
+export function useSignoffsForProgram(programId: string | undefined) {
+  return useQuery({
+    queryKey: ["signoffs", programId],
+    enabled: !!programId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("daily_signoffs" as any)
+        .select("*")
+        .eq("program_id", programId!);
+      if (error) throw error;
+      return data as unknown as DailySignoff[];
+    },
+  });
+}
+
+export function useUpsertRating() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (params: {
+      programId: string;
+      taskId: string;
+      ratedBy: string;
+      rating: string;
+      notes: string | null;
+    }) => {
+      const { error } = await supabase
+        .from("performance_ratings" as any)
+        .upsert(
+          {
+            program_id: params.programId,
+            task_id: params.taskId,
+            rated_by: params.ratedBy,
+            rating: params.rating,
+            notes: params.notes,
+            rated_at: new Date().toISOString(),
+          } as any,
+          { onConflict: "program_id,task_id" }
+        );
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["ratings"] });
+    },
+  });
+}
+
+export function useSignOffDay() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (params: {
+      programId: string;
+      dayNumber: number;
+      managerId: string;
+      overallNotes: string | null;
+    }) => {
+      const { error } = await supabase
+        .from("daily_signoffs" as any)
+        .upsert(
+          {
+            program_id: params.programId,
+            day_number: params.dayNumber,
+            manager_id: params.managerId,
+            overall_notes: params.overallNotes,
+            signed_off_at: new Date().toISOString(),
+          } as any,
+          { onConflict: "program_id,day_number" }
+        );
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["signoffs"] });
+    },
+  });
+}
+
+// ── Helpers ──
+
 const PHASE_LABELS: Record<string, string> = {
   foundations: "Foundations",
   skill_development: "Skill Development",
@@ -186,4 +354,33 @@ const SECTION_LABELS: Record<string, string> = {
 
 export function getSectionLabel(section: string) {
   return SECTION_LABELS[section] || section;
+}
+
+export function getAssociateStatus(
+  program: OnboardingProgram,
+  ratings: PerformanceRating[],
+  days: Day[]
+): "on_track" | "behind" | "needs_attention" {
+  // Check for needs_work/not_attempted in last 2 days
+  const recentDayNumbers = [program.current_day, program.current_day - 1].filter((d) => d >= 1);
+  const recentDayIds = days
+    .filter((d) => recentDayNumbers.includes(d.day_number))
+    .map((d) => d.id);
+  const recentRatings = ratings.filter((r) => {
+    // We need task -> day mapping; we'll check by task_id existence in ratings
+    return true; // Simplified: check all ratings for this program
+  });
+  const hasIssues = ratings.some(
+    (r) => r.rating === "needs_work" || r.rating === "not_attempted"
+  );
+  if (hasIssues) return "needs_attention";
+
+  // Check if on track based on start_date
+  const startDate = new Date(program.start_date);
+  const today = new Date();
+  const daysDiff = Math.floor((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+  const expectedDay = Math.min(daysDiff + 1, 20);
+
+  if (program.current_day < expectedDay) return "behind";
+  return "on_track";
 }

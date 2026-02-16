@@ -10,6 +10,8 @@ import {
   useMyProgram,
   useCompletions,
   useToggleCompletion,
+  useRatingsForProgram,
+  useSignoffsForProgram,
   getPhaseLabel,
   getSectionLabel,
 } from "@/hooks/useOnboardingData";
@@ -19,7 +21,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { ChevronLeft, BookOpen, Dumbbell, Briefcase, UserCheck } from "lucide-react";
+import { ChevronLeft, BookOpen, Dumbbell, Briefcase, UserCheck, Check, AlertTriangle, X } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const sectionIcons: Record<string, typeof BookOpen> = {
@@ -28,6 +30,34 @@ const sectionIcons: Record<string, typeof BookOpen> = {
   mastery_homework: Briefcase,
   manager_checkin: UserCheck,
 };
+
+function RatingBadge({ rating, notes }: { rating: string; notes: string | null }) {
+  const config: Record<string, { label: string; icon: typeof Check; className: string }> = {
+    meets_expectation: { label: "Meets Expectation", icon: Check, className: "bg-success/10 text-success" },
+    needs_work: { label: "Needs Work", icon: AlertTriangle, className: "bg-warning/10 text-warning" },
+    not_attempted: { label: "Not Attempted", icon: X, className: "bg-destructive/10 text-destructive" },
+  };
+  const c = config[rating];
+  if (!c) return null;
+  const Icon = c.icon;
+
+  return (
+    <div className="mt-2 space-y-1">
+      <div className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full ${c.className}`}>
+        <Icon className="h-3 w-3" />
+        {c.label}
+      </div>
+      {rating === "needs_work" && notes && (
+        <div className="bg-warning/5 border border-warning/20 rounded-lg p-2.5">
+          <p className="text-xs text-foreground">{notes}</p>
+        </div>
+      )}
+      {rating !== "needs_work" && notes && (
+        <p className="text-xs text-muted-foreground italic">{notes}</p>
+      )}
+    </div>
+  );
+}
 
 export default function DayViewPage() {
   const { dayNumber } = useParams();
@@ -39,11 +69,14 @@ export default function DayViewPage() {
   const { data: tasks, isLoading } = useTasksForDay(day?.id);
   const { data: program } = useMyProgram();
   const { data: completions } = useCompletions(program?.id);
+  const { data: ratings } = useRatingsForProgram(program?.id);
+  const { data: signoffs } = useSignoffsForProgram(program?.id);
   const toggleCompletion = useToggleCompletion();
 
   const completionMap = new Map(completions?.map((c) => [c.task_id, c]));
+  const ratingMap = new Map(ratings?.map((r) => [r.task_id, r]));
+  const daySignoff = signoffs?.find((s) => s.day_number === num);
 
-  // Group tasks by section
   const tasksBySection = (tasks || []).reduce((acc, task) => {
     if (!acc[task.section]) acc[task.section] = [];
     acc[task.section].push(task);
@@ -65,7 +98,6 @@ export default function DayViewPage() {
   return (
     <AppShell>
       <div className="px-4 py-4 animate-fade-in space-y-4">
-        {/* Back + Header */}
         <Button
           variant="ghost"
           size="sm"
@@ -99,10 +131,16 @@ export default function DayViewPage() {
                 {completedCount}/{totalTasks}
               </span>
             </div>
+
+            {daySignoff && (
+              <div className="mt-3 flex items-center gap-2 text-xs text-success font-medium">
+                <Check className="h-3.5 w-3.5" />
+                Manager signed off {new Date(daySignoff.signed_off_at).toLocaleDateString()}
+              </div>
+            )}
           </Card>
         )}
 
-        {/* Accordion Sections */}
         {Object.keys(tasksBySection).length > 0 && (
           <Accordion type="multiple" defaultValue={Object.keys(tasksBySection)} className="space-y-2">
             {Object.entries(tasksBySection).map(([section, sectionTasks]) => {
@@ -127,22 +165,31 @@ export default function DayViewPage() {
                     </AccordionTrigger>
                     <AccordionContent className="px-1 pb-2">
                       <div className="divide-y divide-border">
-                        {sectionTasks!.map((task) => (
-                          <TaskItem
-                            key={task.id}
-                            task={task}
-                            completion={completionMap.get(task.id)}
-                            disabled={!program}
-                            onToggle={() => {
-                              if (!program) return;
-                              toggleCompletion.mutate({
-                                programId: program.id,
-                                taskId: task.id,
-                                currentStatus: completionMap.get(task.id)?.status,
-                              });
-                            }}
-                          />
-                        ))}
+                        {sectionTasks!.map((task) => {
+                          const taskRating = ratingMap.get(task.id);
+                          return (
+                            <div key={task.id}>
+                              <TaskItem
+                                task={task}
+                                completion={completionMap.get(task.id)}
+                                disabled={!program}
+                                onToggle={() => {
+                                  if (!program) return;
+                                  toggleCompletion.mutate({
+                                    programId: program.id,
+                                    taskId: task.id,
+                                    currentStatus: completionMap.get(task.id)?.status,
+                                  });
+                                }}
+                              />
+                              {taskRating && daySignoff && (
+                                <div className="px-3 pb-3 pl-12">
+                                  <RatingBadge rating={taskRating.rating} notes={taskRating.notes} />
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     </AccordionContent>
                   </Card>
@@ -152,7 +199,15 @@ export default function DayViewPage() {
           </Accordion>
         )}
 
-        {/* Day navigation */}
+        {daySignoff?.overall_notes && (
+          <Card className="p-4">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+              Manager Notes
+            </h3>
+            <p className="text-sm text-foreground">{daySignoff.overall_notes}</p>
+          </Card>
+        )}
+
         <div className="flex justify-between pt-2">
           <Button
             variant="outline"
