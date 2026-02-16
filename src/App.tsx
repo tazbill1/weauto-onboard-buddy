@@ -13,6 +13,7 @@ import ManagerDashboardPage from "./pages/ManagerDashboardPage";
 import CheckInPage from "./pages/CheckInPage";
 import ReviewUploadPage from "./pages/ReviewUploadPage";
 import PlaceholderPage from "./pages/PlaceholderPage";
+import ContentAdminPage from "./pages/ContentAdminPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -48,7 +49,7 @@ function AppRoutes() {
       <Route path="/reviews" element={<ProtectedRoute><PlaceholderPage title="Reviews" /></ProtectedRoute>} />
       <Route path="/stores" element={<ProtectedRoute><PlaceholderPage title="Stores" /></ProtectedRoute>} />
       <Route path="/reports" element={<ProtectedRoute><PlaceholderPage title="Reports" /></ProtectedRoute>} />
-      <Route path="/content-admin" element={<ProtectedRoute><PlaceholderPage title="Content Admin" /></ProtectedRoute>} />
+      <Route path="/content-admin" element={<ProtectedRoute><ContentAdminPage /></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

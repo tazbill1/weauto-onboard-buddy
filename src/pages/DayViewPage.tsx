@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { AppShell } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
@@ -23,7 +24,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { ChevronLeft, BookOpen, Dumbbell, Briefcase, UserCheck, Check, AlertTriangle, X } from "lucide-react";
+import { ChevronLeft, BookOpen, Dumbbell, Briefcase, UserCheck, Check, AlertTriangle, X, ChevronDown, ChevronUp } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const sectionIcons: Record<string, typeof BookOpen> = {
@@ -65,6 +66,7 @@ export default function DayViewPage() {
   const { dayNumber } = useParams();
   const navigate = useNavigate();
   const num = parseInt(dayNumber || "1", 10);
+  const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
 
   const { data: days } = useDays();
   const day = days?.find((d) => d.day_number === num);
@@ -171,6 +173,20 @@ export default function DayViewPage() {
                                   });
                                 }}
                               />
+                              {task.content_html && (
+                                <div className="px-3 pl-12">
+                                  <button
+                                    onClick={() => setExpandedTaskId(expandedTaskId === task.id ? null : task.id)}
+                                    className="text-xs text-secondary font-medium flex items-center gap-1 mb-2 hover:underline"
+                                  >
+                                    {expandedTaskId === task.id ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                                    {expandedTaskId === task.id ? "Hide content" : "View content"}
+                                  </button>
+                                  {expandedTaskId === task.id && (
+                                    <div className="prose prose-sm max-w-none pb-3 text-foreground" dangerouslySetInnerHTML={{ __html: task.content_html }} />
+                                  )}
+                                </div>
+                              )}
                               {task.requires_upload && program && (
                                 <div className="px-3 pb-3 pl-12">
                                   <UploadDeliverable
