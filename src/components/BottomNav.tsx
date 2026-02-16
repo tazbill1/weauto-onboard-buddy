@@ -36,7 +36,7 @@ const navByRole: Record<string, NavItem[]> = {
   ],
   corporate_admin: [
     { label: "Stores", icon: Building2, path: "/" },
-    { label: "Content", icon: Settings, path: "/content-admin" },
+    { label: "My Team", icon: Users, path: "/team" },
     { label: "Reports", icon: FileText, path: "/reports" },
     { label: "Alerts", icon: Bell, path: "/notifications" },
     { label: "Profile", icon: User, path: "/profile" },
