@@ -14,6 +14,94 @@ export type Database = {
   }
   public: {
     Tables: {
+      days: {
+        Row: {
+          created_at: string
+          day_number: number
+          id: string
+          phase: string
+          store_id: string | null
+          subtitle: string | null
+          title: string
+          week_number: number
+        }
+        Insert: {
+          created_at?: string
+          day_number: number
+          id?: string
+          phase: string
+          store_id?: string | null
+          subtitle?: string | null
+          title: string
+          week_number: number
+        }
+        Update: {
+          created_at?: string
+          day_number?: number
+          id?: string
+          phase?: string
+          store_id?: string | null
+          subtitle?: string | null
+          title?: string
+          week_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "days_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      onboarding_programs: {
+        Row: {
+          actual_end_date: string | null
+          associate_id: string
+          created_at: string
+          current_day: number
+          expected_end_date: string | null
+          id: string
+          manager_id: string
+          start_date: string
+          status: string
+          store_id: string
+        }
+        Insert: {
+          actual_end_date?: string | null
+          associate_id: string
+          created_at?: string
+          current_day?: number
+          expected_end_date?: string | null
+          id?: string
+          manager_id: string
+          start_date?: string
+          status?: string
+          store_id: string
+        }
+        Update: {
+          actual_end_date?: string | null
+          associate_id?: string
+          created_at?: string
+          current_day?: number
+          expected_end_date?: string | null
+          id?: string
+          manager_id?: string
+          start_date?: string
+          status?: string
+          store_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onboarding_programs_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -90,6 +178,98 @@ export type Database = {
           store_name?: string
         }
         Relationships: []
+      }
+      task_completions: {
+        Row: {
+          associate_id: string
+          completed_at: string | null
+          created_at: string
+          id: string
+          program_id: string
+          status: string
+          task_id: string
+        }
+        Insert: {
+          associate_id: string
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          program_id: string
+          status?: string
+          task_id: string
+        }
+        Update: {
+          associate_id?: string
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          program_id?: string
+          status?: string
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_completions_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_programs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_completions_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tasks: {
+        Row: {
+          content_html: string | null
+          created_at: string
+          day_id: string
+          description: string | null
+          id: string
+          requires_rating: boolean
+          requires_upload: boolean
+          section: string
+          sort_order: number
+          title: string
+        }
+        Insert: {
+          content_html?: string | null
+          created_at?: string
+          day_id: string
+          description?: string | null
+          id?: string
+          requires_rating?: boolean
+          requires_upload?: boolean
+          section: string
+          sort_order?: number
+          title: string
+        }
+        Update: {
+          content_html?: string | null
+          created_at?: string
+          day_id?: string
+          description?: string | null
+          id?: string
+          requires_rating?: boolean
+          requires_upload?: boolean
+          section?: string
+          sort_order?: number
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_day_id_fkey"
+            columns: ["day_id"]
+            isOneToOne: false
+            referencedRelation: "days"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
