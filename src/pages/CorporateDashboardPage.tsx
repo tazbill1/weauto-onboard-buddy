@@ -19,7 +19,8 @@ import {
   getAssociateStatusFromData,
   calcProgress,
 } from "@/hooks/useDashboardData";
-import { Building2, Users, Award, TrendingUp, Clock, CheckCircle2, AlertTriangle } from "lucide-react";
+import { Building2, Users, Award, TrendingUp, Clock, CheckCircle2, AlertTriangle, BookOpen } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   ChartContainer,
   ChartTooltip,
@@ -133,7 +134,12 @@ export default function CorporateDashboardPage() {
   return (
     <AppShell>
       <div className="px-4 py-6 animate-fade-in space-y-5">
-        <h1 className="text-2xl font-bold text-foreground">All Stores Overview</h1>
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold text-foreground">All Stores Overview</h1>
+          <Button variant="outline" size="sm" onClick={() => navigate("/content-admin")} className="gap-1.5">
+            <BookOpen className="h-4 w-4" /> Content
+          </Button>
+        </div>
 
         {/* Aggregate Metrics */}
         <div className="grid grid-cols-2 gap-3">
