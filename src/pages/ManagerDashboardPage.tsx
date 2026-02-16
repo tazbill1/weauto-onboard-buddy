@@ -16,7 +16,8 @@ import {
   getAssociateStatus,
 } from "@/hooks/useOnboardingData";
 import type { OnboardingProgram, PerformanceRating, ProfileBasic, Day } from "@/hooks/useOnboardingData";
-import { Users, Video, Image, FileText, Clock } from "lucide-react";
+import { useNotifications } from "@/hooks/useNotifications";
+import { Users, Video, Image, FileText, Clock, AlertTriangle, Bell } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -129,6 +130,8 @@ export default function ManagerDashboardPage() {
   const { data: allPrograms, isLoading: allLoading } = useAllActivePrograms();
   const { data: days } = useDays();
   const { data: pendingUploads } = usePendingUploads();
+  const { data: notifications } = useNotifications();
+  const navigate = useNavigate();
 
   const programs = isManager ? managedPrograms : allPrograms;
   const isLoading = isManager ? managedLoading : allLoading;
@@ -158,6 +161,10 @@ export default function ManagerDashboardPage() {
   const firstName = profile?.full_name?.split(" ")[0] || "Manager";
   const pendingCount = pendingUploads?.length || 0;
 
+  // Behind schedule notifications
+  const behindScheduleNotifs = notifications?.filter((n) => n.type === "behind_schedule" && !n.is_read) || [];
+  const unreadNotifCount = notifications?.filter((n) => !n.is_read).length || 0;
+
   return (
     <AppShell>
       <div className="px-4 py-6 animate-fade-in space-y-5">
@@ -167,6 +174,37 @@ export default function ManagerDashboardPage() {
             {programs?.length || 0} active associate{(programs?.length || 0) !== 1 ? "s" : ""} in onboarding
           </p>
         </div>
+
+        {/* Notification Summary */}
+        {(pendingCount > 0 || behindScheduleNotifs.length > 0) && (
+          <div className="flex gap-3">
+            <button
+              onClick={() => navigate("/reviews")}
+              className="flex-1 rounded-xl bg-card border p-3 text-center hover:bg-muted/50 transition-colors"
+            >
+              <p className="text-2xl font-bold text-warning">{pendingCount}</p>
+              <p className="text-[11px] text-muted-foreground font-medium">Pending Reviews</p>
+            </button>
+            {behindScheduleNotifs.length > 0 && (
+              <button
+                onClick={() => navigate("/notifications")}
+                className="flex-1 rounded-xl bg-destructive/5 border border-destructive/20 p-3 text-center hover:bg-destructive/10 transition-colors"
+              >
+                <p className="text-2xl font-bold text-destructive">{behindScheduleNotifs.length}</p>
+                <p className="text-[11px] text-destructive font-medium">Behind Schedule</p>
+              </button>
+            )}
+            {unreadNotifCount > 0 && (
+              <button
+                onClick={() => navigate("/notifications")}
+                className="flex-1 rounded-xl bg-card border p-3 text-center hover:bg-muted/50 transition-colors"
+              >
+                <p className="text-2xl font-bold text-secondary">{unreadNotifCount}</p>
+                <p className="text-[11px] text-muted-foreground font-medium">Unread Alerts</p>
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Pending Reviews */}
         {pendingCount > 0 && (

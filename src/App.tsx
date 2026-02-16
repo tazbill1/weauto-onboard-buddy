@@ -14,6 +14,7 @@ import CheckInPage from "./pages/CheckInPage";
 import ReviewUploadPage from "./pages/ReviewUploadPage";
 import PlaceholderPage from "./pages/PlaceholderPage";
 import ContentAdminPage from "./pages/ContentAdminPage";
+import NotificationsPage from "./pages/NotificationsPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -44,7 +45,7 @@ function AppRoutes() {
       <Route path="/review/:uploadId" element={<ProtectedRoute><ReviewUploadPage /></ProtectedRoute>} />
       <Route path="/progress" element={<ProtectedRoute><PlaceholderPage title="My Progress" /></ProtectedRoute>} />
       <Route path="/content" element={<ProtectedRoute><PlaceholderPage title="Content Library" /></ProtectedRoute>} />
-      <Route path="/notifications" element={<ProtectedRoute><PlaceholderPage title="Notifications" /></ProtectedRoute>} />
+      <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
       <Route path="/team" element={<ProtectedRoute><ManagerDashboardPage /></ProtectedRoute>} />
       <Route path="/reviews" element={<ProtectedRoute><PlaceholderPage title="Reviews" /></ProtectedRoute>} />
       <Route path="/stores" element={<ProtectedRoute><PlaceholderPage title="Stores" /></ProtectedRoute>} />

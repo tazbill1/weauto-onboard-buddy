@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
 import { AppShell } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
@@ -14,7 +15,9 @@ import {
   getPhaseLabel,
   getSectionLabel,
 } from "@/hooks/useOnboardingData";
+import { useNotifications } from "@/hooks/useNotifications";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Clock, Upload, CheckCircle2, AlertTriangle, Trophy } from "lucide-react";
 
 const roleGreetings: Record<string, string> = {
   associate: "Let's keep your onboarding on track!",
@@ -26,6 +29,7 @@ const roleGreetings: Record<string, string> = {
 
 export default function HomePage() {
   const { profile } = useAuth();
+  const navigate = useNavigate();
   const firstName = profile?.full_name?.split(" ")[0] || "there";
   const isAssociate = profile?.role === "associate";
 
@@ -34,6 +38,8 @@ export default function HomePage() {
   const { data: allTasks } = useAllTasks();
   const { data: completions } = useCompletions(program?.id);
   const toggleCompletion = useToggleCompletion();
+  const { data: notifications } = useNotifications();
+  const recentUnread = notifications?.filter((n) => !n.is_read).slice(0, 3) || [];
 
   // Get current day data
   const currentDayNumber = program?.current_day || 1;
@@ -115,6 +121,48 @@ export default function HomePage() {
               <ProgressRing progress={progress} size={100} strokeWidth={7} />
             </div>
           </Card>
+        )}
+
+        {/* Recent Notifications */}
+        {isAssociate && recentUnread.length > 0 && (
+          <div>
+            <h2 className="text-base font-bold text-foreground mb-2">Recent Alerts</h2>
+            <Card className="divide-y divide-border overflow-hidden">
+              {recentUnread.map((n) => {
+                const iconMap: Record<string, typeof Clock> = {
+                  behind_schedule: Clock,
+                  deliverable_submitted: Upload,
+                  checkin_complete: CheckCircle2,
+                  needs_work: AlertTriangle,
+                  milestone: Trophy,
+                };
+                const colorMap: Record<string, string> = {
+                  behind_schedule: "text-destructive bg-destructive/10",
+                  deliverable_submitted: "text-warning bg-warning/10",
+                  checkin_complete: "text-success bg-success/10",
+                  needs_work: "text-warning bg-warning/10",
+                  milestone: "text-secondary bg-secondary/10",
+                };
+                const Icon = iconMap[n.type] || Clock;
+                return (
+                  <button
+                    key={n.id}
+                    onClick={() => navigate("/notifications")}
+                    className="flex items-start gap-3 w-full text-left p-3 hover:bg-muted/50 transition-colors"
+                  >
+                    <div className={`mt-0.5 h-8 w-8 rounded-full flex items-center justify-center flex-shrink-0 ${colorMap[n.type] || ""}`}>
+                      <Icon className="h-4 w-4" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-foreground truncate">{n.title}</p>
+                      <p className="text-xs text-muted-foreground line-clamp-1">{n.body}</p>
+                    </div>
+                    <span className="h-2 w-2 rounded-full bg-secondary flex-shrink-0 mt-2" />
+                  </button>
+                );
+              })}
+            </Card>
+          </div>
         )}
 
         {/* Today's Tasks */}

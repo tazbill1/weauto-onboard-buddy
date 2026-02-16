@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { usePendingUploads } from "@/hooks/useOnboardingData";
+import { useUnreadCount } from "@/hooks/useNotifications";
 
 interface NavItem {
   label: string;
@@ -56,6 +57,8 @@ export function BottomNav() {
   const navigate = useNavigate();
   const { data: pendingUploads } = usePendingUploads();
 
+  const unreadCount = useUnreadCount();
+
   if (!profile) return null;
 
   const items = navByRole[profile.role] || navByRole.associate;
@@ -68,6 +71,7 @@ export function BottomNav() {
         {items.map((item) => {
           const isActive = location.pathname === item.path;
           const showBadge = item.badgeKey === "pending" && pendingCount > 0;
+          const showNotifBadge = item.path === "/notifications" && unreadCount > 0;
           return (
             <button
               key={item.path}
@@ -83,6 +87,11 @@ export function BottomNav() {
                 {showBadge && (
                   <span className="absolute -top-1.5 -right-2 bg-warning text-warning-foreground text-[9px] font-bold min-w-[16px] h-4 flex items-center justify-center rounded-full px-1">
                     {pendingCount}
+                  </span>
+                )}
+                {showNotifBadge && (
+                  <span className="absolute -top-1.5 -right-2 bg-destructive text-destructive-foreground text-[9px] font-bold min-w-[16px] h-4 flex items-center justify-center rounded-full px-1">
+                    {unreadCount > 99 ? "99+" : unreadCount}
                   </span>
                 )}
               </div>
