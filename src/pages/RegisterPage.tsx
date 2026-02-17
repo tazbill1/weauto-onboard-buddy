@@ -262,30 +262,17 @@ export default function RegisterPage() {
             <Input id="regPassword" type="password" placeholder="Min 6 characters" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} className="h-12" />
           </div>
           {!invite && (
-            <>
-              <div className="space-y-2">
-                <Label>Role</Label>
-                <Select value={role} onValueChange={setRole}>
-                  <SelectTrigger className="h-12"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {roles.map((r) => (
-                      <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Store</Label>
-                <Select value={storeId} onValueChange={setStoreId}>
-                  <SelectTrigger className="h-12"><SelectValue placeholder="Select a store" /></SelectTrigger>
-                  <SelectContent>
-                    {stores.map((s) => (
-                      <SelectItem key={s.id} value={s.id}>{s.store_name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </>
+            <div className="space-y-2">
+              <Label>Store</Label>
+              <Select value={storeId} onValueChange={setStoreId}>
+                <SelectTrigger className="h-12"><SelectValue placeholder="Select a store" /></SelectTrigger>
+                <SelectContent>
+                  {stores.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>{s.store_name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           )}
           <Button type="submit" className="h-12 w-full text-base font-semibold" disabled={loading}>
             {loading ? "Creating…" : "Create Account"}
