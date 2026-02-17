@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
 import { AppShell } from "@/components/AppShell";
@@ -12,7 +12,22 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronLeft, Check, X, Download } from "lucide-react";
 import { relativeTime } from "@/lib/dateUtils";
-import { useEffect } from "react";
+
+function useSignedUrl(filePath: string | undefined) {
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (!filePath) return;
+    // If it's already a full URL (legacy), use directly
+    if (filePath.startsWith("http")) {
+      setUrl(filePath);
+      return;
+    }
+    supabase.storage.from("deliverables").createSignedUrl(filePath, 1800).then(({ data }) => {
+      setUrl(data?.signedUrl || null);
+    });
+  }, [filePath]);
+  return url;
+}
 
 export default function ReviewUploadPage() {
   const { uploadId } = useParams();
@@ -89,6 +104,7 @@ export default function ReviewUploadPage() {
     }
   };
 
+  const fileUrl = useSignedUrl(upload?.file_url);
   const isVideo = upload?.file_type === "video";
   const isImage = upload?.file_type === "image";
 
@@ -113,12 +129,12 @@ export default function ReviewUploadPage() {
 
             <Card className="overflow-hidden">
               {isVideo ? (
-                <video controls playsInline className="w-full max-h-[60vh]" src={upload.file_url} />
+                <video controls playsInline className="w-full max-h-[60vh]" src={fileUrl || ""} />
               ) : isImage ? (
-                <img src={upload.file_url} alt={upload.file_name} className="w-full max-h-[60vh] object-contain" loading="lazy" />
+                <img src={fileUrl || ""} alt={upload.file_name} className="w-full max-h-[60vh] object-contain" loading="lazy" />
               ) : (
                 <div className="p-6 text-center">
-                  <a href={upload.file_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-secondary underline">
+                  <a href={fileUrl || "#"} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-secondary underline">
                     <Download className="h-4 w-4" /> Download {upload.file_name}
                   </a>
                 </div>

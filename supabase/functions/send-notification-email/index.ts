@@ -29,11 +29,71 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
+    // This function is called from DB triggers (via net.http_post with anon key)
+    // and potentially from client. Validate the caller via Authorization header.
+    const authHeader = req.headers.get("Authorization");
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY") || "";
+
+    // If called with anon key from DB trigger, allow but validate notificationId exists
+    // If called with user JWT, validate user owns the notification
+    let callerUserId: string | null = null;
+    const bearerToken = authHeader?.replace("Bearer ", "") || "";
+
+    if (bearerToken && bearerToken !== anonKey) {
+      // User JWT - validate
+      const supabaseAuth = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_ANON_KEY")!,
+        { global: { headers: { Authorization: authHeader! } } }
+      );
+      const { data: claimsData, error: claimsError } = await supabaseAuth.auth.getClaims(bearerToken);
+      if (claimsError || !claimsData?.claims) {
+        return new Response(
+          JSON.stringify({ error: "Unauthorized" }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      callerUserId = claimsData.claims.sub as string;
+    }
+
     const { to, subject, body, notificationId } = (await req.json()) as EmailPayload;
 
     if (!to || !subject || !body) {
       return new Response(
         JSON.stringify({ error: "Missing required fields: to, subject, body" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Validate notificationId exists and matches caller if user JWT
+    if (notificationId) {
+      const { data: notif, error: notifError } = await supabase
+        .from("notifications")
+        .select("user_id")
+        .eq("id", notificationId)
+        .single();
+
+      if (notifError || !notif) {
+        return new Response(
+          JSON.stringify({ error: "Invalid notification" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // If called by a user (not trigger), verify ownership
+      if (callerUserId && notif.user_id !== callerUserId) {
+        return new Response(
+          JSON.stringify({ error: "Forbidden" }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    } else if (!bearerToken || bearerToken === anonKey) {
+      // No notificationId and called from trigger — this shouldn't happen normally
+      // but allow for backwards compat with trigger calls
+    } else if (callerUserId) {
+      // User calling without notificationId — reject
+      return new Response(
+        JSON.stringify({ error: "notificationId required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -52,14 +112,12 @@ Deno.serve(async (req) => {
     <tr>
       <td align="center">
         <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 520px; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
-          <!-- Header -->
           <tr>
             <td style="background-color: #1e3a5f; padding: 24px 32px; text-align: center;">
               <h1 style="margin: 0; color: #ffffff; font-size: 22px; font-weight: 800; letter-spacing: -0.5px;">WEAuto</h1>
               <p style="margin: 4px 0 0; color: rgba(255,255,255,0.7); font-size: 12px; font-weight: 500;">Onboarding Program</p>
             </td>
           </tr>
-          <!-- Body -->
           <tr>
             <td style="padding: 32px;">
               <h2 style="margin: 0 0 12px; color: #1e3a5f; font-size: 18px; font-weight: 700;">${subject}</h2>
@@ -67,7 +125,6 @@ Deno.serve(async (req) => {
               <a href="${appUrl}/notifications" style="display: inline-block; background-color: #2b6cb0; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-size: 14px; font-weight: 600;">View in App</a>
             </td>
           </tr>
-          <!-- Footer -->
           <tr>
             <td style="padding: 20px 32px; border-top: 1px solid #e2e8f0; text-align: center;">
               <p style="margin: 0; color: #a0aec0; font-size: 11px;">This is an automated notification from WEAuto Onboarding.</p>
@@ -80,7 +137,6 @@ Deno.serve(async (req) => {
 </body>
 </html>`;
 
-    // Send via Resend
     const resendRes = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
@@ -100,12 +156,11 @@ Deno.serve(async (req) => {
     if (!resendRes.ok) {
       console.error("Resend error:", resendData);
       return new Response(
-        JSON.stringify({ error: "Email send failed", details: resendData }),
+        JSON.stringify({ error: "Email send failed" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Mark notification as emailed
     if (notificationId) {
       await supabase
         .from("notifications")
@@ -120,7 +175,7 @@ Deno.serve(async (req) => {
   } catch (error) {
     console.error("Error:", error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: "Internal error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
