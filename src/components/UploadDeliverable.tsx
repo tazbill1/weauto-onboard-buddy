@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
@@ -68,6 +68,18 @@ export function UploadDeliverable({ programId, taskId, storeId, dayNumber, exist
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [signedUrl, setSignedUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!existingUpload?.file_url) return;
+    if (existingUpload.file_url.startsWith("http")) {
+      setSignedUrl(existingUpload.file_url);
+      return;
+    }
+    supabase.storage.from("deliverables").createSignedUrl(existingUpload.file_url, 1800).then(({ data }) => {
+      setSignedUrl(data?.signedUrl || null);
+    });
+  }, [existingUpload?.file_url]);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -99,14 +111,15 @@ export function UploadDeliverable({ programId, taskId, storeId, dayNumber, exist
       if (storageError) throw storageError;
       setProgress(70);
 
-      const { data: urlData } = supabase.storage.from("deliverables").getPublicUrl(filePath);
+      // Store the file path (not public URL) since bucket is private
+      const fileUrl = filePath;
 
       if (existingUpload) {
         // Update existing upload (re-submit)
         const { error } = await supabase
           .from("uploads" as any)
           .update({
-            file_url: urlData.publicUrl,
+            file_url: fileUrl,
             file_type: fileType,
             file_name: file.name,
             file_size: file.size,
@@ -126,7 +139,7 @@ export function UploadDeliverable({ programId, taskId, storeId, dayNumber, exist
             program_id: programId,
             task_id: taskId,
             uploaded_by: user.id,
-            file_url: urlData.publicUrl,
+            file_url: fileUrl,
             file_type: fileType,
             file_name: file.name,
             file_size: file.size,
@@ -195,8 +208,8 @@ export function UploadDeliverable({ programId, taskId, storeId, dayNumber, exist
           </>
         )}
 
-        {existingUpload.status === "approved" && (
-          <a href={existingUpload.file_url} target="_blank" rel="noopener noreferrer" className="text-xs text-secondary underline">
+        {existingUpload.status === "approved" && signedUrl && (
+          <a href={signedUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-secondary underline">
             View file
           </a>
         )}

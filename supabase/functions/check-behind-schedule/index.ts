@@ -34,6 +34,20 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // This function should only be called by cron/scheduler.
+    // Validate via Authorization header matching the anon key (from cron) or service role key.
+    const authHeader = req.headers.get("Authorization");
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY") || "";
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+    const bearerToken = authHeader?.replace("Bearer ", "") || "";
+
+    if (bearerToken !== anonKey && bearerToken !== serviceRoleKey) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
@@ -53,12 +67,11 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Calculate expected day using business days (skip weekends)
     function getBusinessDaysBetween(startDate: string, today: Date): number {
       const start = new Date(startDate);
       let count = 0;
       const current = new Date(start);
-      current.setDate(current.getDate() + 1); // Start counting from the day after start
+      current.setDate(current.getDate() + 1);
 
       while (current <= today) {
         const dayOfWeek = current.getDay();
@@ -75,11 +88,10 @@ Deno.serve(async (req) => {
 
     for (const program of programs) {
       const businessDays = getBusinessDaysBetween(program.start_date, today);
-      const expectedDay = Math.min(businessDays + 1, 20); // +1 because day 1 is the start day
+      const expectedDay = Math.min(businessDays + 1, 20);
 
-      if (program.current_day >= expectedDay) continue; // On track
+      if (program.current_day >= expectedDay) continue;
 
-      // Check if we already sent a behind_schedule notification today
       const todayStart = new Date();
       todayStart.setHours(0, 0, 0, 0);
 
@@ -91,9 +103,8 @@ Deno.serve(async (req) => {
         .gte("created_at", todayStart.toISOString())
         .limit(1);
 
-      if (existingNotif && existingNotif.length > 0) continue; // Already notified today
+      if (existingNotif && existingNotif.length > 0) continue;
 
-      // Get associate name
       const { data: associateProfile } = await supabase
         .from("profiles")
         .select("full_name, email")
@@ -103,7 +114,6 @@ Deno.serve(async (req) => {
       const name = associateProfile?.full_name || associateProfile?.email || "Associate";
       const body = `${name} is on Day ${program.current_day} but should be on Day ${expectedDay}. Please review and catch up.`;
 
-      // Notify associate
       const { data: assocNotif } = await supabase.from("notifications").insert({
         user_id: program.associate_id,
         type: "behind_schedule",
@@ -112,7 +122,6 @@ Deno.serve(async (req) => {
         related_program_id: program.id,
       }).select("id").single();
 
-      // Notify manager
       const { data: mgrNotif } = await supabase.from("notifications").insert({
         user_id: program.manager_id,
         type: "behind_schedule",
@@ -121,14 +130,11 @@ Deno.serve(async (req) => {
         related_program_id: program.id,
       }).select("id").single();
 
-      // Send emails
       const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
       if (RESEND_API_KEY) {
-        // Email associate
         if (associateProfile?.email) {
           await sendEmail(associateProfile.email, "Onboarding Behind Schedule", body, assocNotif?.id, supabase);
         }
-        // Get manager email and send
         const { data: managerProfile } = await supabase
           .from("profiles")
           .select("email")
@@ -148,7 +154,7 @@ Deno.serve(async (req) => {
     );
   } catch (error) {
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: "Internal error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

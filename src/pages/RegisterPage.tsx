@@ -32,16 +32,13 @@ interface Store {
 }
 
 interface InviteData {
-  id: string;
   email: string;
   role: string;
   store_id: string;
   status: string;
-  token: string;
   auto_start_onboarding: boolean;
   assigned_manager_id: string | null;
-  expires_at: string;
-  stores: { store_name: string };
+  store_name: string | null;
 }
 
 export default function RegisterPage() {
@@ -66,33 +63,42 @@ export default function RegisterPage() {
   // Fetch invite if token present
   useEffect(() => {
     if (!inviteToken) return;
-    supabase
-      .from("invites" as any)
-      .select("*, stores!inner(store_name)")
-      .eq("token", inviteToken)
-      .maybeSingle()
-      .then(({ data, error }) => {
-        if (error || !data) {
+    
+    const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+    fetch(`https://${projectId}.supabase.co/functions/v1/get-invite-by-token`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token: inviteToken }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (!data || data.error) {
           setInviteStatus("invalid");
           return;
         }
-        const inv = data as any as InviteData;
-        if (inv.status === "accepted") {
+        if (data.status === "accepted") {
           setInviteStatus("accepted");
-        } else if (inv.status === "revoked") {
-          setInviteStatus("invalid");
-        } else if (inv.status === "expired" || new Date(inv.expires_at) < new Date()) {
+        } else if (data.status === "expired") {
           setInviteStatus("expired");
-        } else if (inv.status === "pending") {
-          setInvite(inv);
-          setEmail(inv.email);
-          setRole(inv.role);
-          setStoreId(inv.store_id);
+        } else if (data.status === "valid") {
+          setInvite({
+            email: data.email,
+            role: data.role,
+            store_id: data.store_id,
+            status: "pending",
+            auto_start_onboarding: data.auto_start_onboarding,
+            assigned_manager_id: data.assigned_manager_id,
+            store_name: data.store_name,
+          });
+          setEmail(data.email);
+          setRole(data.role);
+          setStoreId(data.store_id);
           setInviteStatus("valid");
         } else {
           setInviteStatus("invalid");
         }
-      });
+      })
+      .catch(() => setInviteStatus("invalid"));
   }, [inviteToken]);
 
   useEffect(() => {
@@ -129,11 +135,11 @@ export default function RegisterPage() {
 
     // If invite, update invite status and optionally create onboarding program
     if (invite && authData.user) {
-      // Update invite to accepted
+      // Update invite to accepted (use token since we don't have the id)
       await supabase
         .from("invites" as any)
         .update({ status: "accepted", accepted_at: new Date().toISOString() } as any)
-        .eq("id", invite.id);
+        .eq("token", inviteToken);
 
       // Auto-create onboarding program if applicable
       if (invite.auto_start_onboarding && invite.role === "associate" && invite.assigned_manager_id) {
@@ -227,7 +233,7 @@ export default function RegisterPage() {
         {invite && (
           <div className="mb-6 rounded-xl border bg-primary/5 border-primary/20 p-4">
             <p className="text-sm font-medium text-foreground">
-              You've been invited to join <strong>{invite.stores.store_name}</strong> as a{" "}
+              You've been invited to join <strong>{invite.store_name}</strong> as a{" "}
               <strong>{roleLabels[invite.role]}</strong>
             </p>
           </div>
