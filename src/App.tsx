@@ -14,6 +14,7 @@ import ManagerDashboardPage from "./pages/ManagerDashboardPage";
 import CheckInPage from "./pages/CheckInPage";
 import ReviewUploadPage from "./pages/ReviewUploadPage";
 import PlaceholderPage from "./pages/PlaceholderPage";
+import ReviewsListPage from "./pages/ReviewsListPage";
 import ContentAdminPage from "./pages/ContentAdminPage";
 import NotificationsPage from "./pages/NotificationsPage";
 import GMOverviewPage from "./pages/GMOverviewPage";
@@ -54,7 +55,7 @@ function AppRoutes() {
       <Route path="/content" element={<ProtectedRoute><PlaceholderPage title="Content Library" /></ProtectedRoute>} />
       <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
       <Route path="/team" element={<ProtectedRoute><RoleGuard allowedRoles={['sales_manager', 'corporate_admin']}><ManagerDashboardPage /></RoleGuard></ProtectedRoute>} />
-      <Route path="/reviews" element={<ProtectedRoute><PlaceholderPage title="Reviews" /></ProtectedRoute>} />
+      <Route path="/reviews" element={<ProtectedRoute><RoleGuard allowedRoles={['sales_manager', 'gm', 'corporate_admin']}><ReviewsListPage /></RoleGuard></ProtectedRoute>} />
       <Route path="/stores" element={<ProtectedRoute><RoleGuard allowedRoles={['gm', 'corporate_admin']}><GMOverviewPage /></RoleGuard></ProtectedRoute>} />
       <Route path="/store/:storeId" element={<ProtectedRoute><RoleGuard allowedRoles={['gm', 'corporate_admin']}><StoreDetailPage /></RoleGuard></ProtectedRoute>} />
       <Route path="/reports" element={<ProtectedRoute><RoleGuard allowedRoles={['gm', 'corporate_admin', 'hr_admin']}><ReportsPage /></RoleGuard></ProtectedRoute>} />
