@@ -26,6 +26,7 @@ import StoreDetailPage from "./pages/StoreDetailPage";
 import ReportsPage from "./pages/ReportsPage";
 import HRAdminPage from "./pages/HRAdminPage";
 import InvitePage from "./pages/InvitePage";
+import UsersPage from "./pages/UsersPage";
 import ChangePasswordPage from "./pages/ChangePasswordPage";
 import NotFound from "./pages/NotFound";
 
@@ -72,6 +73,7 @@ function AppRoutes() {
       <Route path="/reports" element={<ProtectedRoute><RoleGuard allowedRoles={['gm', 'corporate_admin', 'hr_admin']}><ReportsPage /></RoleGuard></ProtectedRoute>} />
       <Route path="/content-admin" element={<ProtectedRoute><RoleGuard allowedRoles={['corporate_admin']}><ContentAdminPage /></RoleGuard></ProtectedRoute>} />
       <Route path="/invite" element={<ProtectedRoute><RoleGuard allowedRoles={['sales_manager', 'gm', 'hr_admin', 'corporate_admin']}><InvitePage /></RoleGuard></ProtectedRoute>} />
+      <Route path="/users" element={<ProtectedRoute><RoleGuard allowedRoles={['sales_manager', 'gm', 'hr_admin', 'corporate_admin']}><UsersPage /></RoleGuard></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
