@@ -49,14 +49,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
+    let wasAuthenticated = false;
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      async (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
         if (session?.user) {
+          wasAuthenticated = true;
           setTimeout(() => fetchProfile(session.user.id), 0);
         } else {
           setProfile(null);
+          // If user had a session and it ended unexpectedly (not a manual sign-out),
+          // redirect to login so they're not stuck on a broken screen
+          if (wasAuthenticated && event === "SIGNED_OUT") {
+            wasAuthenticated = false;
+            window.location.href = "/login";
+          }
         }
         setLoading(false);
       }
@@ -66,6 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
+        wasAuthenticated = true;
         fetchProfile(session.user.id);
       }
       setLoading(false);
@@ -75,8 +85,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    // Clear profile first so the SIGNED_OUT event doesn't trigger the expiry redirect
     setProfile(null);
+    await supabase.auth.signOut();
   };
 
   return (

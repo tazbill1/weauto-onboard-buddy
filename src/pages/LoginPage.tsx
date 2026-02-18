@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { WEAutoLogo } from "@/components/WEAutoLogo";
 import { Button } from "@/components/ui/button";
@@ -60,6 +60,11 @@ export default function LoginPage() {
               required
               className="h-12"
             />
+          </div>
+          <div className="flex justify-end">
+            <Link to="/forgot-password" className="text-xs text-muted-foreground hover:text-primary transition-colors">
+              Forgot password?
+            </Link>
           </div>
           <Button type="submit" className="h-12 w-full text-base font-semibold" disabled={loading}>
             {loading ? "Signing in…" : "Sign In"}
