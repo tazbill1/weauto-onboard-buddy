@@ -26,14 +26,19 @@ import StoreDetailPage from "./pages/StoreDetailPage";
 import ReportsPage from "./pages/ReportsPage";
 import HRAdminPage from "./pages/HRAdminPage";
 import InvitePage from "./pages/InvitePage";
+import ChangePasswordPage from "./pages/ChangePasswordPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
-  if (loading) return <div className="flex min-h-screen items-center justify-center text-muted-foreground">Loading…</div>;
+  const { user, profile, loading } = useAuth();
+  if (loading || (user && !profile)) return <div className="flex min-h-screen items-center justify-center text-muted-foreground">Loading…</div>;
   if (!user) return <Navigate to="/login" replace />;
+  // Force password change for admin-created accounts
+  if (profile?.must_change_password && window.location.pathname !== "/change-password") {
+    return <Navigate to="/change-password" replace />;
+  }
   return <>{children}</>;
 }
 
@@ -51,6 +56,7 @@ function AppRoutes() {
       <Route path="/register" element={<PublicRoute><RegisterPage /></PublicRoute>} />
       <Route path="/forgot-password" element={<PublicRoute><ForgotPasswordPage /></PublicRoute>} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
+      <Route path="/change-password" element={<ProtectedRoute><ChangePasswordPage /></ProtectedRoute>} />
       <Route path="/" element={<ProtectedRoute><HomePage /></ProtectedRoute>} />
       <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
       <Route path="/day/:dayNumber" element={<ProtectedRoute><DayViewPage /></ProtectedRoute>} />
