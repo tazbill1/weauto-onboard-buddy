@@ -5,18 +5,9 @@ import { WEAutoLogo } from "@/components/WEAutoLogo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { AlertTriangle, CheckCircle2, XCircle } from "lucide-react";
 import { format } from "date-fns";
-
-const roles = [
-  { value: "associate", label: "Associate" },
-  { value: "sales_manager", label: "Sales Manager" },
-  { value: "gm", label: "General Manager" },
-  { value: "hr_admin", label: "HR Admin" },
-  { value: "corporate_admin", label: "Corporate Admin" },
-];
 
 const roleLabels: Record<string, string> = {
   associate: "Associate",
@@ -25,11 +16,6 @@ const roleLabels: Record<string, string> = {
   hr_admin: "HR Admin",
   corporate_admin: "Corporate Admin",
 };
-
-interface Store {
-  id: string;
-  store_name: string;
-}
 
 interface InviteData {
   email: string;
@@ -45,9 +31,6 @@ export default function RegisterPage() {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState("associate");
-  const [storeId, setStoreId] = useState("");
-  const [stores, setStores] = useState<Store[]>([]);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -63,7 +46,7 @@ export default function RegisterPage() {
   // Fetch invite if token present
   useEffect(() => {
     if (!inviteToken) return;
-    
+
     const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
     fetch(`https://${projectId}.supabase.co/functions/v1/get-invite-by-token`, {
       method: "POST",
@@ -91,8 +74,6 @@ export default function RegisterPage() {
             store_name: data.store_name,
           });
           setEmail(data.email);
-          setRole(data.role);
-          setStoreId(data.store_id);
           setInviteStatus("valid");
         } else {
           setInviteStatus("invalid");
@@ -101,18 +82,10 @@ export default function RegisterPage() {
       .catch(() => setInviteStatus("invalid"));
   }, [inviteToken]);
 
-  useEffect(() => {
-    supabase.from("stores").select("id, store_name").eq("is_active", true).then(({ data }) => {
-      if (data) setStores(data);
-    });
-  }, []);
-
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!invite) return; // should never reach this without a valid invite
     setLoading(true);
-
-    const signUpRole = invite ? invite.role : role;
-    const signUpStoreId = invite ? invite.store_id : storeId;
 
     const { data: authData, error } = await supabase.auth.signUp({
       email,
@@ -121,56 +94,68 @@ export default function RegisterPage() {
         emailRedirectTo: window.location.origin,
         data: {
           full_name: fullName,
-          role: signUpRole,
-          store_id: signUpStoreId || null,
+          role: invite.role,
+          store_id: invite.store_id || null,
         },
       },
     });
-    
+
     if (error) {
       setLoading(false);
       toast({ title: "Registration failed", description: error.message, variant: "destructive" });
       return;
     }
 
-    // If invite, update invite status and optionally create onboarding program
-    if (invite && authData.user) {
-      // Update invite to accepted (use token since we don't have the id)
-      await supabase
-        .from("invites" as any)
-        .update({ status: "accepted", accepted_at: new Date().toISOString() } as any)
-        .eq("token", inviteToken);
+    // Update invite to accepted
+    await supabase
+      .from("invites" as any)
+      .update({ status: "accepted", accepted_at: new Date().toISOString() } as any)
+      .eq("token", inviteToken);
 
-      // Auto-create onboarding program if applicable
-      if (invite.auto_start_onboarding && invite.role === "associate" && invite.assigned_manager_id) {
-        await supabase.from("onboarding_programs" as any).insert({
-          associate_id: authData.user.id,
-          manager_id: invite.assigned_manager_id,
-          store_id: invite.store_id,
-          start_date: format(new Date(), "yyyy-MM-dd"),
-          status: "active",
-          current_day: 1,
-        } as any);
-      }
+    // Auto-create onboarding program if applicable
+    if (authData.user && invite.auto_start_onboarding && invite.role === "associate" && invite.assigned_manager_id) {
+      await supabase.from("onboarding_programs" as any).insert({
+        associate_id: authData.user.id,
+        manager_id: invite.assigned_manager_id,
+        store_id: invite.store_id,
+        start_date: format(new Date(), "yyyy-MM-dd"),
+        status: "active",
+        current_day: 1,
+      } as any);
     }
 
     setLoading(false);
-
-    if (invite) {
-      toast({ title: "Welcome to WEAuto!", description: "Your account has been created." });
-      navigate("/");
-    } else {
-      toast({ title: "Account created!", description: "You can now sign in." });
-      navigate("/login");
-    }
+    toast({ title: "Welcome to WEAuto!", description: "Your account has been created. Please check your email to verify." });
+    navigate("/login");
   };
 
-  // Invite error states
+  // Loading invite
   if (inviteStatus === "loading") {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-background px-6">
         <WEAutoLogo className="scale-125 mb-6" />
         <p className="text-muted-foreground">Loading invite…</p>
+      </div>
+    );
+  }
+
+  // No invite token — block open registration
+  if (inviteStatus === "none") {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-background px-6">
+        <div className="w-full max-w-sm text-center animate-fade-in">
+          <WEAutoLogo className="scale-125 mx-auto mb-8" />
+          <div className="rounded-xl border bg-muted/50 p-6 mb-6">
+            <XCircle className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+            <h1 className="text-xl font-bold text-foreground mb-2">Invite Required</h1>
+            <p className="text-sm text-muted-foreground">
+              WEAuto is only available to dealership employees. Account creation requires a valid invite link from your manager or HR.
+            </p>
+          </div>
+          <Link to="/login">
+            <Button variant="outline" className="w-full h-12">Back to Sign In</Button>
+          </Link>
+        </div>
       </div>
     );
   }
@@ -198,7 +183,7 @@ export default function RegisterPage() {
           <WEAutoLogo className="scale-125 mx-auto mb-6" />
           <CheckCircle2 className="h-12 w-12 text-success mx-auto mb-4" />
           <h1 className="text-xl font-bold text-foreground mb-2">Invite Already Used</h1>
-          <p className="text-sm text-muted-foreground mb-6">This invite has already been accepted.</p>
+          <p className="text-sm text-muted-foreground mb-6">This invite has already been accepted. Sign in if you already have an account.</p>
           <Link to="/login">
             <Button variant="outline" className="w-full">Go to Sign In</Button>
           </Link>
@@ -214,7 +199,7 @@ export default function RegisterPage() {
           <WEAutoLogo className="scale-125 mx-auto mb-6" />
           <XCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
           <h1 className="text-xl font-bold text-foreground mb-2">Invalid Invite</h1>
-          <p className="text-sm text-muted-foreground mb-6">This invite link is not valid.</p>
+          <p className="text-sm text-muted-foreground mb-6">This invite link is not valid. Please contact your manager.</p>
           <Link to="/login">
             <Button variant="outline" className="w-full">Go to Sign In</Button>
           </Link>
@@ -223,6 +208,7 @@ export default function RegisterPage() {
     );
   }
 
+  // Only reached when inviteStatus === "valid"
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background px-6 py-10">
       <div className="w-full max-w-sm animate-fade-in">
@@ -240,9 +226,7 @@ export default function RegisterPage() {
         )}
 
         <h1 className="mb-1 text-2xl font-bold text-foreground">Create account</h1>
-        <p className="mb-6 text-sm text-muted-foreground">
-          {invite ? "Complete your registration below" : "Join the WEAuto onboarding program"}
-        </p>
+        <p className="mb-6 text-sm text-muted-foreground">Complete your registration below</p>
 
         <form onSubmit={handleRegister} className="space-y-4">
           <div className="space-y-2">
@@ -259,27 +243,14 @@ export default function RegisterPage() {
               onChange={(e) => setEmail(e.target.value)}
               required
               className="h-12"
-              readOnly={!!invite}
-              disabled={!!invite}
+              readOnly
+              disabled
             />
           </div>
           <div className="space-y-2">
             <Label htmlFor="regPassword">Password</Label>
             <Input id="regPassword" type="password" placeholder="Min 6 characters" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} className="h-12" />
           </div>
-          {!invite && (
-            <div className="space-y-2">
-              <Label>Store</Label>
-              <Select value={storeId} onValueChange={setStoreId}>
-                <SelectTrigger className="h-12"><SelectValue placeholder="Select a store" /></SelectTrigger>
-                <SelectContent>
-                  {stores.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>{s.store_name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
           <Button type="submit" className="h-12 w-full text-base font-semibold" disabled={loading}>
             {loading ? "Creating…" : "Create Account"}
           </Button>
