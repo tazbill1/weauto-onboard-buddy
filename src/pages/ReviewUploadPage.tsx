@@ -107,6 +107,7 @@ export default function ReviewUploadPage() {
   const fileUrl = useSignedUrl(upload?.file_url);
   const isVideo = upload?.file_type === "video";
   const isImage = upload?.file_type === "image";
+  const isPDF = upload?.file_type === "pdf" || upload?.file_name?.toLowerCase().endsWith(".pdf");
 
   return (
     <AppShell>
@@ -132,6 +133,19 @@ export default function ReviewUploadPage() {
                 <video controls playsInline className="w-full max-h-[60vh]" src={fileUrl || ""} />
               ) : isImage ? (
                 <img src={fileUrl || ""} alt={upload.file_name} className="w-full max-h-[60vh] object-contain" loading="lazy" />
+              ) : isPDF ? (
+                <div className="w-full">
+                  <iframe
+                    src={fileUrl || ""}
+                    title={upload.file_name}
+                    className="w-full h-[60vh] border-0"
+                  />
+                  <div className="p-3 border-t text-center">
+                    <a href={fileUrl || "#"} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-xs text-secondary underline">
+                      <Download className="h-3.5 w-3.5" /> Open in new tab
+                    </a>
+                  </div>
+                </div>
               ) : (
                 <div className="p-6 text-center">
                   <a href={fileUrl || "#"} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-secondary underline">

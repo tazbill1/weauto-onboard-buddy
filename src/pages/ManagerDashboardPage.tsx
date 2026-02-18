@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Checkbox } from "@/components/ui/checkbox";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
@@ -18,13 +19,14 @@ import {
   useProfiles,
   useRatingsForProgram,
   usePendingUploads,
+  useSignoffsForProgram,
   getPhaseLabel,
   getAssociateStatus,
 } from "@/hooks/useOnboardingData";
-import type { OnboardingProgram, PerformanceRating, ProfileBasic, Day } from "@/hooks/useOnboardingData";
+import type { OnboardingProgram, PerformanceRating, ProfileBasic, Day, DailySignoff } from "@/hooks/useOnboardingData";
 import { useNotifications } from "@/hooks/useNotifications";
 import { InviteFAB } from "@/components/InviteFAB";
-import { Users, Video, Image, FileText, Clock, Trophy } from "lucide-react";
+import { Users, Video, Image, FileText, Clock, Trophy, ChevronDown, ChevronUp, CheckSquare } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 
 function StatusBadge({ status }: { status: "on_track" | "behind" | "needs_attention" }) {
@@ -63,8 +65,21 @@ function AssociateCard({
   onCompleted: () => void;
 }) {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [completing, setCompleting] = useState(false);
+  const [showSignoff, setShowSignoff] = useState(false);
+  const [selectedDays, setSelectedDays] = useState<number[]>([]);
+  const [bulkSigning, setBulkSigning] = useState(false);
+
+  const { data: signoffs } = useSignoffsForProgram(program.id);
+  const signedOffDayNums = new Set(signoffs?.map((s: DailySignoff) => s.day_number) || []);
+
+  // Past days (up to current_day - 1) that haven't been signed off
+  const unsignedPastDays = days
+    .filter((d) => d.day_number < program.current_day && !signedOffDayNums.has(d.day_number))
+    .sort((a, b) => a.day_number - b.day_number);
 
   const initials = (profile?.full_name || "?")
     .split(" ")
@@ -93,6 +108,38 @@ function AssociateCard({
       toast({ title: "Error", description: err.message, variant: "destructive" });
     } finally {
       setCompleting(false);
+    }
+  };
+
+  const toggleDay = (dayNum: number) => {
+    setSelectedDays((prev) =>
+      prev.includes(dayNum) ? prev.filter((d) => d !== dayNum) : [...prev, dayNum]
+    );
+  };
+
+  const handleBulkSignoff = async () => {
+    if (!user || selectedDays.length === 0) return;
+    setBulkSigning(true);
+    try {
+      const inserts = selectedDays.map((dayNumber) => ({
+        program_id: program.id,
+        day_number: dayNumber,
+        manager_id: user.id,
+        overall_notes: null,
+        signed_off_at: new Date().toISOString(),
+      }));
+      const { error } = await supabase
+        .from("daily_signoffs" as any)
+        .upsert(inserts as any, { onConflict: "program_id,day_number" });
+      if (error) throw error;
+      toast({ title: `✅ ${selectedDays.length} day${selectedDays.length > 1 ? "s" : ""} signed off!` });
+      setSelectedDays([]);
+      setShowSignoff(false);
+      queryClient.invalidateQueries({ queryKey: ["signoffs", program.id] });
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setBulkSigning(false);
     }
   };
 
@@ -127,6 +174,17 @@ function AssociateCard({
         >
           Check In – Day {program.current_day}
         </Button>
+        {unsignedPastDays.length > 0 && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-10 gap-1 text-secondary border-secondary/30 hover:bg-secondary/10"
+            onClick={() => { setShowSignoff((v) => !v); setSelectedDays([]); }}
+          >
+            <CheckSquare className="h-4 w-4" />
+            {showSignoff ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+          </Button>
+        )}
         {isDay20Done && (
           <ConfirmDialog
             title="Complete Onboarding Program?"
@@ -142,6 +200,43 @@ function AssociateCard({
           />
         )}
       </div>
+
+      {/* Bulk Sign-off Panel */}
+      {showSignoff && unsignedPastDays.length > 0 && (
+        <div className="mt-3 pt-3 border-t border-border space-y-2">
+          <p className="text-xs font-semibold text-muted-foreground">Sign off past days:</p>
+          <div className="flex flex-wrap gap-2">
+            {unsignedPastDays.map((d) => (
+              <button
+                key={d.day_number}
+                onClick={() => toggleDay(d.day_number)}
+                className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full border transition-colors ${
+                  selectedDays.includes(d.day_number)
+                    ? "bg-secondary text-secondary-foreground border-secondary"
+                    : "bg-muted/50 text-muted-foreground border-border hover:bg-muted"
+                }`}
+              >
+                <span>Day {d.day_number}</span>
+              </button>
+            ))}
+          </div>
+          {selectedDays.length > 0 && (
+            <ConfirmDialog
+              title={`Sign Off ${selectedDays.length} Day${selectedDays.length > 1 ? "s" : ""}?`}
+              description={`Confirm sign-off for Day${selectedDays.length > 1 ? "s" : ""} ${selectedDays.sort((a, b) => a - b).join(", ")} for ${profile?.full_name || "this associate"}.`}
+              confirmLabel="Sign Off"
+              onConfirm={handleBulkSignoff}
+              disabled={bulkSigning}
+              trigger={
+                <Button size="sm" className="w-full h-9 gap-1 bg-secondary hover:bg-secondary/90 text-secondary-foreground" disabled={bulkSigning}>
+                  <CheckSquare className="h-3.5 w-3.5" />
+                  Sign Off {selectedDays.length} Day{selectedDays.length > 1 ? "s" : ""}
+                </Button>
+              }
+            />
+          )}
+        </div>
+      )}
     </Card>
   );
 }
