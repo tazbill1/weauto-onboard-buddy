@@ -301,6 +301,7 @@ export type Database = {
           hired_date: string | null
           id: string
           is_active: boolean
+          must_change_password: boolean
           onboarding_start_date: string | null
           role: Database["public"]["Enums"]["app_role"]
           store_id: string | null
@@ -314,6 +315,7 @@ export type Database = {
           hired_date?: string | null
           id?: string
           is_active?: boolean
+          must_change_password?: boolean
           onboarding_start_date?: string | null
           role?: Database["public"]["Enums"]["app_role"]
           store_id?: string | null
@@ -327,6 +329,7 @@ export type Database = {
           hired_date?: string | null
           id?: string
           is_active?: boolean
+          must_change_password?: boolean
           onboarding_start_date?: string | null
           role?: Database["public"]["Enums"]["app_role"]
           store_id?: string | null

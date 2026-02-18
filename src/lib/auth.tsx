@@ -13,6 +13,7 @@ interface Profile {
   store_id: string | null;
   avatar_url: string | null;
   is_active: boolean;
+  must_change_password: boolean;
 }
 
 interface AuthContextType {
