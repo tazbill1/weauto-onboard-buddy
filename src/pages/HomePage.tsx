@@ -24,7 +24,7 @@ import {
 import { useNotifications } from "@/hooks/useNotifications";
 import { relativeTime } from "@/lib/dateUtils";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Clock, Upload, CheckCircle2, AlertTriangle, Trophy, Inbox } from "lucide-react";
+import { Clock, Upload, CheckCircle2, AlertTriangle, Trophy, Inbox, TrendingDown } from "lucide-react";
 import { useEffect } from "react";
 
 export default function HomePage() {
@@ -41,6 +41,7 @@ export default function HomePage() {
   const toggleCompletion = useToggleCompletion();
   const { data: notifications } = useNotifications();
   const recentUnread = notifications?.filter((n) => !n.is_read).slice(0, 3) || [];
+  const isBehindSchedule = notifications?.some((n) => n.type === "behind_schedule" && !n.is_read);
 
   useEffect(() => { document.title = "Home — WEAuto Onboarding"; }, []);
 
@@ -110,6 +111,22 @@ export default function HomePage() {
               <ProgressRing progress={progress} size={100} strokeWidth={7} />
             </div>
           </Card>
+        )}
+
+        {/* Behind Schedule Banner */}
+        {isAssociate && isBehindSchedule && (
+          <button
+            onClick={() => navigate("/notifications")}
+            className="w-full flex items-center gap-3 rounded-xl bg-destructive/10 border border-destructive/20 p-3.5 text-left hover:bg-destructive/15 transition-colors"
+          >
+            <div className="h-9 w-9 rounded-full bg-destructive/20 flex items-center justify-center flex-shrink-0">
+              <TrendingDown className="h-4.5 w-4.5 text-destructive" />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-bold text-destructive">You're behind schedule</p>
+              <p className="text-xs text-destructive/70">Tap to see what needs your attention</p>
+            </div>
+          </button>
         )}
 
         {/* Recent Notifications */}
