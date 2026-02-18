@@ -1,11 +1,16 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { InviteFAB } from "@/components/InviteFAB";
 import { useAuth } from "@/lib/auth";
 import { AppShell } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { useToast } from "@/hooks/use-toast";
+import { useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { format } from "date-fns";
 import {
   useDays,
   useAllActivePrograms,
@@ -18,9 +23,9 @@ import {
 } from "@/hooks/useOnboardingData";
 import type { OnboardingProgram, PerformanceRating, ProfileBasic, Day } from "@/hooks/useOnboardingData";
 import { useNotifications } from "@/hooks/useNotifications";
-import { Users, Video, Image, FileText, Clock, AlertTriangle, Bell } from "lucide-react";
+import { InviteFAB } from "@/components/InviteFAB";
+import { Users, Video, Image, FileText, Clock, Trophy } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 
 function StatusBadge({ status }: { status: "on_track" | "behind" | "needs_attention" }) {
   const config = {
@@ -48,14 +53,19 @@ function AssociateCard({
   day,
   ratings,
   days,
+  onCompleted,
 }: {
   program: OnboardingProgram;
   profile: ProfileBasic | undefined;
   day: Day | undefined;
   ratings: PerformanceRating[];
   days: Day[];
+  onCompleted: () => void;
 }) {
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const [completing, setCompleting] = useState(false);
+
   const initials = (profile?.full_name || "?")
     .split(" ")
     .map((n) => n[0])
@@ -64,6 +74,27 @@ function AssociateCard({
     .slice(0, 2);
 
   const status = getAssociateStatus(program, ratings, days);
+  const isDay20Done = program.current_day >= 20;
+
+  const handleComplete = async () => {
+    setCompleting(true);
+    try {
+      const { error } = await supabase
+        .from("onboarding_programs" as any)
+        .update({
+          status: "completed",
+          actual_end_date: format(new Date(), "yyyy-MM-dd"),
+        } as any)
+        .eq("id", program.id);
+      if (error) throw error;
+      toast({ title: "🎉 Program completed!", description: `${profile?.full_name || "Associate"} is now certified.` });
+      onCompleted();
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setCompleting(false);
+    }
+  };
 
   return (
     <Card className="p-4">
@@ -88,13 +119,29 @@ function AssociateCard({
           </p>
         </div>
       </div>
-      <Button
-        size="sm"
-        className="w-full mt-3 h-10"
-        onClick={() => navigate(`/checkin/${program.id}/${program.current_day}`)}
-      >
-        Check In – Day {program.current_day}
-      </Button>
+      <div className="flex gap-2 mt-3">
+        <Button
+          size="sm"
+          className="flex-1 h-10"
+          onClick={() => navigate(`/checkin/${program.id}/${program.current_day}`)}
+        >
+          Check In – Day {program.current_day}
+        </Button>
+        {isDay20Done && (
+          <ConfirmDialog
+            title="Complete Onboarding Program?"
+            description={`Mark ${profile?.full_name || "this associate"}'s 20-day program as completed and certified? This cannot be undone.`}
+            confirmLabel="Complete & Certify"
+            onConfirm={handleComplete}
+            disabled={completing}
+            trigger={
+              <Button size="sm" variant="outline" className="gap-1 text-success border-success/30 hover:bg-success/10 h-10" disabled={completing}>
+                <Trophy className="h-4 w-4" />
+              </Button>
+            }
+          />
+        )}
+      </div>
     </Card>
   );
 }
@@ -126,6 +173,7 @@ function PendingReviewItem({ upload, profile, task }: { upload: any; profile: an
 
 export default function ManagerDashboardPage() {
   const { profile } = useAuth();
+  const queryClient = useQueryClient();
   const isManager = profile?.role === "sales_manager";
   const { data: managedPrograms, isLoading: managedLoading } = useManagedPrograms();
   const { data: allPrograms, isLoading: allLoading } = useAllActivePrograms();
@@ -240,7 +288,11 @@ export default function ManagerDashboardPage() {
           ) : !programs?.length ? (
             <Card className="p-8 text-center">
               <Users className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-              <p className="text-sm text-muted-foreground">No active associates in onboarding</p>
+              <p className="text-sm font-semibold text-foreground mb-1">No active associates</p>
+              <p className="text-xs text-muted-foreground mb-4">Invite a new team member to get started with onboarding.</p>
+              <Button size="sm" variant="outline" className="gap-1" onClick={() => navigate("/invite")}>
+                <Users className="h-3.5 w-3.5" /> Send an Invite
+              </Button>
             </Card>
           ) : (
             <div className="space-y-3">
@@ -248,10 +300,11 @@ export default function ManagerDashboardPage() {
                 <AssociateCard
                   key={program.id}
                   program={program}
-                  profile={profileMap.get(program.associate_id)}
+                  profile={profileMap.get(program.associate_id)!}
                   day={days?.find((d) => d.day_number === program.current_day)}
                   ratings={[]}
                   days={days || []}
+                  onCompleted={() => queryClient.invalidateQueries({ queryKey: ["managed-programs"] })}
                 />
               ))}
             </div>
