@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { WEAutoLogo } from "@/components/WEAutoLogo";
 import { Button } from "@/components/ui/button";
@@ -67,10 +67,7 @@ export default function LoginPage() {
         </form>
 
         <p className="mt-6 text-center text-sm text-muted-foreground">
-          New to WEAuto?{" "}
-          <Link to="/register" className="font-medium text-primary hover:underline">
-            Create account
-          </Link>
+          No account? Contact your manager to receive an invite.
         </p>
       </div>
     </div>
