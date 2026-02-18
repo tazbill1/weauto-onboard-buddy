@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
@@ -13,11 +14,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Users, Search, UserCheck, UserX } from "lucide-react";
+import { Users, Search, UserCheck, UserX, KeyRound } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 const roleLabels: Record<string, string> = {
@@ -47,6 +55,11 @@ export default function UsersPage() {
   const [statusFilter, setStatusFilter] = useState("active");
 
   useEffect(() => { document.title = "Users — WEAuto"; }, []);
+
+  const [resetDialogOpen, setResetDialogOpen] = useState(false);
+  const [resetTarget, setResetTarget] = useState<{ userId: string; name: string } | null>(null);
+  const [newPassword, setNewPassword] = useState("");
+  const [resetting, setResetting] = useState(false);
 
   const isCorporateAdmin = profile?.role === "corporate_admin";
   const isHRAdmin = profile?.role === "hr_admin";
@@ -114,6 +127,30 @@ export default function UsersPage() {
       queryClient.invalidateQueries({ queryKey: ["all-users"] });
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const openResetDialog = (userId: string, name: string) => {
+    setResetTarget({ userId, name });
+    setNewPassword("");
+    setResetDialogOpen(true);
+  };
+
+  const handleResetPassword = async () => {
+    if (!resetTarget || newPassword.length < 6) return;
+    setResetting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("reset-user-password", {
+        body: { userId: resetTarget.userId, password: newPassword },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast({ title: "Password reset!", description: `Password updated for ${resetTarget.name}.` });
+      setResetDialogOpen(false);
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setResetting(false);
     }
   };
 
@@ -215,7 +252,16 @@ export default function UsersPage() {
                       </p>
                     )}
                   </div>
-                  <div className="flex-shrink-0">
+                  <div className="flex-shrink-0 flex gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0 text-muted-foreground hover:text-primary"
+                      title="Reset password"
+                      onClick={() => openResetDialog(u.user_id, u.full_name || u.email)}
+                    >
+                      <KeyRound className="h-4 w-4" />
+                    </Button>
                     <ConfirmDialog
                       title={u.is_active ? "Deactivate User?" : "Activate User?"}
                       description={
@@ -242,7 +288,40 @@ export default function UsersPage() {
             ))}
           </div>
         )}
+
+        {/* Reset Password Dialog */}
+        <Dialog open={resetDialogOpen} onOpenChange={setResetDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Reset Password</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3 py-2">
+              <p className="text-sm text-muted-foreground">
+                Set a new password for <strong>{resetTarget?.name}</strong>.
+              </p>
+              <div className="space-y-1.5">
+                <Label htmlFor="new-password">New Password</Label>
+                <Input
+                  id="new-password"
+                  type="password"
+                  placeholder="Min 6 characters"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="h-11"
+                  onKeyDown={(e) => e.key === "Enter" && handleResetPassword()}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setResetDialogOpen(false)}>Cancel</Button>
+              <Button onClick={handleResetPassword} disabled={resetting || newPassword.length < 6}>
+                {resetting ? "Saving…" : "Reset Password"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </AppShell>
   );
 }
+
