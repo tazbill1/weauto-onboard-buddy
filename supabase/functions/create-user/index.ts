@@ -82,11 +82,17 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Set must_change_password flag
+    // Update profile with correct role and must_change_password
+    // The handle_new_user trigger may downgrade role to 'associate' without an invite,
+    // so we explicitly set the correct role here via the admin client.
     const { error: profileError } = await adminClient
       .from("profiles")
-      .update({ must_change_password: true })
+      .update({ must_change_password: true, role: role })
       .eq("user_id", newUser.user.id);
+
+    if (profileError) {
+      console.error("Failed to update profile:", profileError.message);
+    }
 
     if (profileError) {
       console.error("Failed to set must_change_password:", profileError.message);
