@@ -2,7 +2,7 @@ import { useAuth } from "@/lib/auth";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   Home, BarChart3, BookOpen, Bell, User, Users, ClipboardCheck,
-  Building2, FileText, LayoutDashboard, Settings
+  Building2, FileText, LayoutDashboard, Settings, UserCog
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { usePendingUploads } from "@/hooks/useOnboardingData";
@@ -39,14 +39,14 @@ const navByRole: Record<string, NavItem[]> = {
   ],
   corporate_admin: [
     { label: "Stores", icon: Building2, path: "/" },
-    { label: "Content", icon: Settings, path: "/content-admin" },
+    { label: "Users", icon: UserCog, path: "/users" },
     { label: "Reports", icon: FileText, path: "/reports" },
     { label: "Alerts", icon: Bell, path: "/notifications" },
     { label: "Profile", icon: User, path: "/profile" },
   ],
   hr_admin: [
     { label: "Team", icon: Users, path: "/" },
-    { label: "Reports", icon: FileText, path: "/reports" },
+    { label: "Users", icon: UserCog, path: "/users" },
     { label: "Alerts", icon: Bell, path: "/notifications" },
     { label: "Profile", icon: User, path: "/profile" },
   ],
