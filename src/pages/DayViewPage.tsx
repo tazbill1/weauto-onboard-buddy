@@ -92,10 +92,15 @@ export default function DayViewPage() {
     return acc;
   }, {} as Record<string, typeof tasks>);
 
-  const totalTasks = tasks?.length || 0;
+  const associateTasks = tasks?.filter((t) => t.section !== "manager_checkin") || [];
+  const totalTasks = associateTasks.length;
   const completedCount =
-    tasks?.filter((t) => completionMap.get(t.id)?.status === "completed").length || 0;
-  const dayProgress = totalTasks > 0 ? (completedCount / totalTasks) * 100 : 0;
+    associateTasks.filter((t) => completionMap.get(t.id)?.status === "completed").length;
+  const managerCheckinDone = !!daySignoff;
+  const managerCheckinTasks = tasks?.filter((t) => t.section === "manager_checkin") || [];
+  const totalWithCheckin = totalTasks + managerCheckinTasks.length;
+  const completedWithCheckin = completedCount + (managerCheckinDone ? managerCheckinTasks.length : 0);
+  const dayProgress = totalWithCheckin > 0 ? (completedWithCheckin / totalWithCheckin) * 100 : 0;
 
   const phaseColors: Record<string, string> = {
     foundations: "text-primary",
@@ -127,7 +132,7 @@ export default function DayViewPage() {
             {day.subtitle && <p className="mt-1 text-sm text-muted-foreground">{day.subtitle}</p>}
             <div className="mt-4 flex items-center gap-3">
               <Progress value={dayProgress} className="flex-1 h-2" />
-              <span className="text-xs font-semibold text-muted-foreground whitespace-nowrap">{completedCount}/{totalTasks}</span>
+              <span className="text-xs font-semibold text-muted-foreground whitespace-nowrap">{completedWithCheckin}/{totalWithCheckin}</span>
             </div>
             {daySignoff && (
               <div className="mt-3 flex items-center gap-2 text-xs text-success font-medium">
@@ -161,14 +166,16 @@ export default function DayViewPage() {
                         {sectionTasks!.map((task) => {
                           const taskRating = ratingMap.get(task.id);
                           const taskUpload = uploadMap.get(task.id);
+                          const isManagerCheckin = task.section === "manager_checkin";
                           return (
                             <div key={task.id}>
                               <TaskItem
                                 task={task}
                                 completion={completionMap.get(task.id)}
-                                disabled={!program || task.requires_upload}
+                                managerSignedOff={!!daySignoff}
+                                disabled={!program || task.requires_upload || isManagerCheckin}
                                 onToggle={() => {
-                                  if (!program || task.requires_upload) return;
+                                  if (!program || task.requires_upload || isManagerCheckin) return;
                                   toggleCompletion.mutate({
                                     programId: program.id,
                                     taskId: task.id,
