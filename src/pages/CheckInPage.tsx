@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
 import { AppShell } from "@/components/AppShell";
@@ -15,13 +15,15 @@ import {
   useRatingsForProgram,
   useUpsertRating,
   useSignOffDay,
+  useUploadsForProgram,
   getPhaseLabel,
   type OnboardingProgram,
+  type UploadRecord,
 } from "@/hooks/useOnboardingData";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronLeft, Check, AlertTriangle, X } from "lucide-react";
-import { useEffect } from "react";
+import { ChevronLeft, Check, AlertTriangle, X, Video, Image, FileText, ExternalLink } from "lucide-react";
+
 
 const RATING_OPTIONS = [
   { value: "meets_expectation", label: "Meets Expectation", icon: Check, color: "bg-success text-success-foreground", ring: "ring-success/30" },
@@ -29,6 +31,32 @@ const RATING_OPTIONS = [
   { value: "not_attempted", label: "Not Attempted", icon: X, color: "bg-destructive text-destructive-foreground", ring: "ring-destructive/30" },
 ] as const;
 
+function UploadPreview({ upload }: { upload: UploadRecord }) {
+  const [signedUrl, setSignedUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!upload.file_url) return;
+    if (upload.file_url.startsWith("http")) {
+      setSignedUrl(upload.file_url);
+      return;
+    }
+    supabase.storage.from("deliverables").createSignedUrl(upload.file_url, 1800)
+      .then(({ data }) => { if (data?.signedUrl) setSignedUrl(data.signedUrl); });
+  }, [upload.file_url]);
+
+  if (!signedUrl) return <div className="h-32 rounded-lg bg-muted animate-pulse" />;
+
+  if (upload.file_type === "video") {
+    return <video src={signedUrl} controls className="w-full rounded-lg max-h-48" />;
+  }
+  if (upload.file_type === "image") {
+    return <img src={signedUrl} alt={upload.file_name} className="w-full rounded-lg max-h-48 object-contain bg-muted" />;
+  }
+  if (upload.file_name?.endsWith(".pdf")) {
+    return <iframe src={signedUrl} title={upload.file_name} className="w-full h-48 rounded-lg border" />;
+  }
+  return null;
+}
 export default function CheckInPage() {
   const { programId, dayNumber } = useParams();
   const navigate = useNavigate();
@@ -52,6 +80,7 @@ export default function CheckInPage() {
   const day = days?.find((d) => d.day_number === dayNum);
   const { data: tasks, isLoading } = useTasksForDay(day?.id);
   const { data: existingRatings } = useRatingsForProgram(programId);
+  const { data: uploads } = useUploadsForProgram(programId);
   const { data: profiles } = useProfiles(program ? [program.associate_id] : []);
   const associateProfile = profiles?.[0];
 
@@ -59,6 +88,14 @@ export default function CheckInPage() {
   const signOffDay = useSignOffDay();
 
   const rateableTasks = useMemo(() => tasks?.filter((t) => t.requires_rating) || [], [tasks]);
+
+  // Map task_id -> upload for tasks on this day
+  const uploadMap = useMemo(() => {
+    const map = new Map<string, UploadRecord>();
+    const dayTaskIds = new Set(tasks?.map((t) => t.id) || []);
+    uploads?.forEach((u) => { if (dayTaskIds.has(u.task_id)) map.set(u.task_id, u); });
+    return map;
+  }, [uploads, tasks]);
 
   const [localRatings, setLocalRatings] = useState<Record<string, string>>({});
   const [localNotes, setLocalNotes] = useState<Record<string, string>>({});
@@ -136,6 +173,7 @@ export default function CheckInPage() {
             {rateableTasks.map((task) => {
               const currentRating = ratingMap[task.id];
               const currentNotes = localNotes[task.id] ?? notesMap[task.id] ?? "";
+              const upload = uploadMap.get(task.id);
 
               return (
                 <Card key={task.id} className="p-4 space-y-3">
@@ -143,6 +181,26 @@ export default function CheckInPage() {
                     <h3 className="text-sm font-bold text-foreground">{task.title}</h3>
                     {task.description && <p className="text-xs text-muted-foreground mt-0.5">{task.description}</p>}
                   </div>
+
+                  {upload && (
+                    <div className="rounded-xl border bg-muted/30 p-3 space-y-2">
+                      <div className="flex items-center gap-2">
+                        {upload.file_type === "video" ? <Video className="h-4 w-4 text-secondary" /> :
+                         upload.file_type === "image" ? <Image className="h-4 w-4 text-secondary" /> :
+                         <FileText className="h-4 w-4 text-secondary" />}
+                        <span className="text-xs font-medium text-foreground truncate flex-1">{upload.file_name}</span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-xs gap-1 text-secondary"
+                          onClick={(e) => { e.stopPropagation(); navigate(`/review/${upload.id}`); }}
+                        >
+                          <ExternalLink className="h-3 w-3" /> Review
+                        </Button>
+                      </div>
+                      <UploadPreview upload={upload} />
+                    </div>
+                  )}
 
                   <div className="flex gap-2">
                     {RATING_OPTIONS.map((opt) => {
