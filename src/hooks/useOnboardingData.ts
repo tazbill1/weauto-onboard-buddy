@@ -352,6 +352,7 @@ export function useSignOffDay() {
       managerId: string;
       overallNotes: string | null;
     }) => {
+      // 1. Insert/update the sign-off record
       const { error } = await supabase
         .from("daily_signoffs" as any)
         .upsert(
@@ -365,9 +366,23 @@ export function useSignOffDay() {
           { onConflict: "program_id,day_number" }
         );
       if (error) throw error;
+
+      // 2. Auto-advance the associate's current_day if this is the latest signed-off day
+      const nextDay = params.dayNumber + 1;
+      if (nextDay <= 20) {
+        const { error: advanceError } = await supabase
+          .from("onboarding_programs")
+          .update({ current_day: nextDay } as any)
+          .eq("id", params.programId)
+          .lt("current_day", nextDay);
+        if (advanceError) console.error("Failed to advance day:", advanceError);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["signoffs"] });
+      queryClient.invalidateQueries({ queryKey: ["my-program"] });
+      queryClient.invalidateQueries({ queryKey: ["managed-programs"] });
+      queryClient.invalidateQueries({ queryKey: ["all-active-programs"] });
     },
   });
 }
