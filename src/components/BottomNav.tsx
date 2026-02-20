@@ -40,9 +40,9 @@ const navByRole: Record<string, NavItem[]> = {
   corporate_admin: [
     { label: "Stores", icon: Building2, path: "/" },
     { label: "Reviews", icon: ClipboardCheck, path: "/reviews", badgeKey: "pending" },
-    { label: "Reports", icon: FileText, path: "/reports" },
     { label: "Users", icon: UserCog, path: "/users" },
     { label: "Alerts", icon: Bell, path: "/notifications" },
+    { label: "Profile", icon: User, path: "/profile" },
   ],
   hr_admin: [
     { label: "Team", icon: Users, path: "/" },
