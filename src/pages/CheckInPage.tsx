@@ -36,11 +36,13 @@ function UploadPreview({ upload }: { upload: UploadRecord }) {
 
   useEffect(() => {
     if (!upload.file_url) return;
-    if (upload.file_url.startsWith("http")) {
-      setSignedUrl(upload.file_url);
-      return;
+    let path = upload.file_url;
+    if (path.startsWith("http")) {
+      const marker = "/deliverables/";
+      const idx = path.indexOf(marker);
+      if (idx !== -1) path = path.substring(idx + marker.length);
     }
-    supabase.storage.from("deliverables").createSignedUrl(upload.file_url, 1800)
+    supabase.storage.from("deliverables").createSignedUrl(path, 1800)
       .then(({ data }) => { if (data?.signedUrl) setSignedUrl(data.signedUrl); });
   }, [upload.file_url]);
 
