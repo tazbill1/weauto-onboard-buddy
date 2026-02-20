@@ -96,13 +96,15 @@ export default function CheckInPage() {
     }
   };
 
+  const [signedOffSuccess, setSignedOffSuccess] = useState(false);
+
   const handleSignOff = async () => {
     if (!user || !programId) return;
     setSigningOff(true);
     try {
       await signOffDay.mutateAsync({ programId, dayNumber: dayNum, managerId: user.id, overallNotes: overallNotes || null });
       toast({ title: `✅ Day ${dayNum} signed off!`, description: "Ratings have been saved." });
-      navigate(-1);
+      setSignedOffSuccess(true);
     } catch {
       toast({ title: "Error", description: "Failed to sign off.", variant: "destructive" });
     } finally {
@@ -207,22 +209,44 @@ export default function CheckInPage() {
           />
         </Card>
 
-        <ConfirmDialog
-          title={`Sign off on Day ${dayNum}?`}
-          description={`Confirm sign-off for Day ${dayNum}? This will be recorded with your name and timestamp.`}
-          confirmLabel={`Sign Off Day ${dayNum}`}
-          onConfirm={handleSignOff}
-          disabled={!allRated || signingOff}
-          trigger={
-            <Button className="w-full h-12 text-base font-semibold" disabled={!allRated || signingOff}>
-              {signingOff
-                ? "Signing off..."
-                : allRated
-                ? `Sign Off on Day ${dayNum}`
-                : `Rate all tasks to sign off (${Object.keys(ratingMap).length}/${rateableTasks.length})`}
-            </Button>
-          }
-        />
+        {signedOffSuccess ? (
+          <Card className="p-6 text-center space-y-4 border-success/30 bg-success/5">
+            <div className="flex flex-col items-center gap-2">
+              <div className="h-12 w-12 rounded-full bg-success/20 flex items-center justify-center">
+                <Check className="h-6 w-6 text-success" />
+              </div>
+              <h3 className="text-lg font-bold text-foreground">Day {dayNum} Signed Off!</h3>
+              <p className="text-sm text-muted-foreground">Ratings and notes have been saved.</p>
+            </div>
+            <div className="flex flex-col gap-2">
+              {dayNum < 20 && (
+                <Button className="w-full h-12 text-base font-semibold" onClick={() => navigate(`/checkin/${programId}/${dayNum + 1}`)}>
+                  Continue to Day {dayNum + 1} Check-In
+                </Button>
+              )}
+              <Button variant="outline" className="w-full h-10" onClick={() => navigate("/")}>
+                Back to Dashboard
+              </Button>
+            </div>
+          </Card>
+        ) : (
+          <ConfirmDialog
+            title={`Sign off on Day ${dayNum}?`}
+            description={`Confirm sign-off for Day ${dayNum}? This will be recorded with your name and timestamp.`}
+            confirmLabel={`Sign Off Day ${dayNum}`}
+            onConfirm={handleSignOff}
+            disabled={!allRated || signingOff}
+            trigger={
+              <Button className="w-full h-12 text-base font-semibold" disabled={!allRated || signingOff}>
+                {signingOff
+                  ? "Signing off..."
+                  : allRated
+                  ? `Sign Off on Day ${dayNum}`
+                  : `Rate all tasks to sign off (${Object.keys(ratingMap).length}/${rateableTasks.length})`}
+              </Button>
+            }
+          />
+        )}
       </div>
     </AppShell>
   );
