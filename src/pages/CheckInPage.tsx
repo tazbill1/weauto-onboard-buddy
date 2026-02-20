@@ -113,7 +113,7 @@ export default function CheckInPage() {
   return (
     <AppShell>
       <div className="px-4 py-4 animate-fade-in space-y-4">
-        <Button variant="ghost" size="sm" className="gap-1 -ml-2 text-muted-foreground" onClick={() => window.history.length > 1 ? navigate(-1) : navigate("/")}>
+        <Button variant="ghost" size="sm" className="gap-1 -ml-2 text-muted-foreground" onClick={() => navigate("/")}>
           <ChevronLeft className="h-4 w-4" /> Back
         </Button>
 
