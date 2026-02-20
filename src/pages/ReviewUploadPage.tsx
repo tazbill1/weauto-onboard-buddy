@@ -13,16 +13,21 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronLeft, Check, X, Download } from "lucide-react";
 import { relativeTime } from "@/lib/dateUtils";
 
+function extractStoragePath(filePath: string): string {
+  if (filePath.startsWith("http")) {
+    const marker = "/deliverables/";
+    const idx = filePath.indexOf(marker);
+    if (idx !== -1) return filePath.substring(idx + marker.length);
+  }
+  return filePath;
+}
+
 function useSignedUrl(filePath: string | undefined) {
   const [url, setUrl] = useState<string | null>(null);
   useEffect(() => {
     if (!filePath) return;
-    // If it's already a full URL (legacy), use directly
-    if (filePath.startsWith("http")) {
-      setUrl(filePath);
-      return;
-    }
-    supabase.storage.from("deliverables").createSignedUrl(filePath, 1800).then(({ data }) => {
+    const path = extractStoragePath(filePath);
+    supabase.storage.from("deliverables").createSignedUrl(path, 1800).then(({ data }) => {
       setUrl(data?.signedUrl || null);
     });
   }, [filePath]);
