@@ -146,6 +146,27 @@ export function getDepartmentTotalDays(dept: Department | undefined, dayCount?: 
   return dept?.typical_duration_days || dayCount || 20;
 }
 
+// ── Constants ──
+
+export const COMPANY_WIDE_SLUG = "company_wide";
+
+/** Hook to get the Company-Wide department record */
+export function useCompanyWideDepartment() {
+  return useQuery({
+    queryKey: ["department", "company-wide"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("departments" as any)
+        .select("*")
+        .eq("slug", COMPANY_WIDE_SLUG)
+        .maybeSingle();
+      if (error) throw error;
+      return data as unknown as Department | null;
+    },
+    staleTime: 1000 * 60 * 30, // cache for 30 min
+  });
+}
+
 // ── Queries ──
 
 export function useDays(departmentId?: string) {
@@ -162,6 +183,66 @@ export function useDays(departmentId?: string) {
       const { data, error } = await query;
       if (error) throw error;
       return data as unknown as Day[];
+    },
+  });
+}
+
+/**
+ * Fetch company-wide days + department-specific days combined.
+ * Company-wide days come first (keeping their original day_numbers),
+ * then department days follow with day_numbers offset by the count of company-wide days.
+ */
+export function useProgramDays(departmentId?: string) {
+  const { data: cwDept } = useCompanyWideDepartment();
+  const cwDeptId = cwDept?.id;
+  const isCompanyWide = departmentId === cwDeptId;
+
+  return useQuery({
+    queryKey: ["program-days", departmentId, cwDeptId],
+    enabled: !!departmentId,
+    queryFn: async () => {
+      // If viewing the Company-Wide department itself, just return its days
+      if (isCompanyWide || !cwDeptId) {
+        const { data, error } = await supabase
+          .from("days" as any)
+          .select("*")
+          .eq("department_id", departmentId!)
+          .order("day_number");
+        if (error) throw error;
+        return { days: data as unknown as Day[], companyWideDayCount: 0 };
+      }
+
+      // Fetch company-wide days
+      const { data: cwDays, error: cwErr } = await supabase
+        .from("days" as any)
+        .select("*")
+        .eq("department_id", cwDeptId)
+        .is("store_id", null)
+        .order("day_number");
+      if (cwErr) throw cwErr;
+
+      // Fetch department days
+      const { data: deptDays, error: deptErr } = await supabase
+        .from("days" as any)
+        .select("*")
+        .eq("department_id", departmentId!)
+        .order("day_number");
+      if (deptErr) throw deptErr;
+
+      const cwCount = (cwDays as any[])?.length || 0;
+      const companyWide = (cwDays as unknown as Day[]) || [];
+      const department = (deptDays as unknown as Day[]) || [];
+
+      // Offset department day_numbers so they come after company-wide days
+      const offsetDept = department.map((d) => ({
+        ...d,
+        day_number: d.day_number + cwCount,
+      }));
+
+      return {
+        days: [...companyWide, ...offsetDept],
+        companyWideDayCount: cwCount,
+      };
     },
   });
 }
