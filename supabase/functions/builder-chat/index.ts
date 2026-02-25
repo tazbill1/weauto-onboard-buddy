@@ -40,11 +40,13 @@ ${topicsContext}
 
 The user is ready for you to generate a complete onboarding program. Based on all the topics and materials provided, create a structured program.
 
+IMPORTANT: Limit the program to at most 10 days. If the typical duration is longer, focus on the most critical first 10 days. Keep content_html concise (2-3 short paragraphs max per task).
+
 You MUST respond with ONLY a valid JSON object (no markdown, no backticks, no explanation before or after). The JSON must follow this exact structure:
 
 {
   "program_name": "${programName || "Onboarding Program"}",
-  "total_days": <number>,
+  "total_days": <number up to 10>,
   "days": [
     {
       "day_number": 1,
@@ -56,7 +58,7 @@ You MUST respond with ONLY a valid JSON object (no markdown, no backticks, no ex
           "section": "learn",
           "title": "Task title",
           "description": "Brief description",
-          "content_html": "<p>Detailed training content in HTML. Be thorough and practical. Include specific procedures, tips, and examples relevant to the dealership.</p>",
+          "content_html": "<p>Concise training content in HTML.</p>",
           "requires_upload": false,
           "requires_rating": true,
           "sort_order": 1
@@ -76,15 +78,12 @@ You MUST respond with ONLY a valid JSON object (no markdown, no backticks, no ex
 Rules for generation:
 - section must be one of: learn, practice, mastery_homework, manager_checkin
 - Every day MUST have at least one manager_checkin task as the last task
-- Balance tasks across days (3-6 tasks per day)
+- Balance tasks across days (3-5 tasks per day)
 - Put foundational/orientation content in early days
 - Put advanced/integration content in later days
-- Include practical exercises in the practice section, not just reading
-- The content_html should be detailed enough for someone to actually learn from it (multiple paragraphs with specific procedures and examples)
-- Add 2-4 suggestions for topics that were NOT covered in the provided materials but are important for this department
+- Keep content_html brief but useful (2-3 paragraphs)
+- Add 2-3 suggestions for topics not covered
 - Respond with ONLY the JSON object, nothing else`;
-    } else if (mode === "refine") {
-      systemPrompt = `You are an expert automotive dealership training program designer. ${departmentContext}
 
 ${topicsContext}
 
@@ -123,9 +122,9 @@ After acknowledging each input, end with a question like "What else should we in
       })),
     ];
 
-    // Use a stronger model for generation to ensure proper JSON output
-    const selectedModel = mode === "generate" ? "google/gemini-2.5-pro" : "google/gemini-2.5-flash";
-    const maxTokens = mode === "generate" ? 16000 : 8000;
+    // Use flash for speed - pro times out on large programs
+    const selectedModel = "google/gemini-2.5-flash";
+    const maxTokens = mode === "generate" ? 12000 : 8000;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
