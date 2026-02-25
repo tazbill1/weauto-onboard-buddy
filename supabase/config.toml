@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.get-invite-by-token]
 verify_jwt = false
+
+[functions.migrate-sales-template]
+verify_jwt = false

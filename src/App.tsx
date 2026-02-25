@@ -19,6 +19,8 @@ import ReviewUploadPage from "./pages/ReviewUploadPage";
 import PlaceholderPage from "./pages/PlaceholderPage";
 import ReviewsListPage from "./pages/ReviewsListPage";
 import ContentAdminPage from "./pages/ContentAdminPage";
+import CreateTemplatePage from "./pages/CreateTemplatePage";
+import TemplateEditorPage from "./pages/TemplateEditorPage";
 import NotificationsPage from "./pages/NotificationsPage";
 import GMOverviewPage from "./pages/GMOverviewPage";
 import CorporateDashboardPage from "./pages/CorporateDashboardPage";
@@ -72,6 +74,8 @@ function AppRoutes() {
       <Route path="/store/:storeId" element={<ProtectedRoute><RoleGuard allowedRoles={['gm', 'corporate_admin']}><StoreDetailPage /></RoleGuard></ProtectedRoute>} />
       <Route path="/reports" element={<ProtectedRoute><RoleGuard allowedRoles={['gm', 'corporate_admin', 'hr_admin']}><ReportsPage /></RoleGuard></ProtectedRoute>} />
       <Route path="/content-admin" element={<ProtectedRoute><RoleGuard allowedRoles={['corporate_admin']}><ContentAdminPage /></RoleGuard></ProtectedRoute>} />
+      <Route path="/templates/new" element={<ProtectedRoute><RoleGuard allowedRoles={['corporate_admin', 'gm', 'hr_admin']}><CreateTemplatePage /></RoleGuard></ProtectedRoute>} />
+      <Route path="/templates/:templateId/edit" element={<ProtectedRoute><RoleGuard allowedRoles={['corporate_admin', 'gm', 'hr_admin']}><TemplateEditorPage /></RoleGuard></ProtectedRoute>} />
       <Route path="/invite" element={<ProtectedRoute><RoleGuard allowedRoles={['sales_manager', 'gm', 'hr_admin', 'corporate_admin']}><InvitePage /></RoleGuard></ProtectedRoute>} />
       <Route path="/users" element={<ProtectedRoute><RoleGuard allowedRoles={['sales_manager', 'gm', 'hr_admin', 'corporate_admin']}><UsersPage /></RoleGuard></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />

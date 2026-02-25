@@ -266,6 +266,7 @@ export type Database = {
           start_date: string
           status: string
           store_id: string
+          template_id: string | null
         }
         Insert: {
           actual_end_date?: string | null
@@ -279,6 +280,7 @@ export type Database = {
           start_date?: string
           status?: string
           store_id: string
+          template_id?: string | null
         }
         Update: {
           actual_end_date?: string | null
@@ -292,6 +294,7 @@ export type Database = {
           start_date?: string
           status?: string
           store_id?: string
+          template_id?: string | null
         }
         Relationships: [
           {
@@ -306,6 +309,13 @@ export type Database = {
             columns: ["store_id"]
             isOneToOne: false
             referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onboarding_programs_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "program_templates"
             referencedColumns: ["id"]
           },
         ]
@@ -401,6 +411,79 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "profiles_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      program_templates: {
+        Row: {
+          created_at: string
+          created_by: string
+          department_id: string
+          description: string | null
+          forked_from: string | null
+          id: string
+          is_master: boolean
+          name: string
+          published_at: string | null
+          status: string
+          store_id: string | null
+          total_days: number | null
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          department_id: string
+          description?: string | null
+          forked_from?: string | null
+          id?: string
+          is_master?: boolean
+          name: string
+          published_at?: string | null
+          status?: string
+          store_id?: string | null
+          total_days?: number | null
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          department_id?: string
+          description?: string | null
+          forked_from?: string | null
+          id?: string
+          is_master?: boolean
+          name?: string
+          published_at?: string | null
+          status?: string
+          store_id?: string | null
+          total_days?: number | null
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "program_templates_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "program_templates_forked_from_fkey"
+            columns: ["forked_from"]
+            isOneToOne: false
+            referencedRelation: "program_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "program_templates_store_id_fkey"
             columns: ["store_id"]
             isOneToOne: false
             referencedRelation: "stores"
@@ -523,6 +606,103 @@ export type Database = {
             columns: ["day_id"]
             isOneToOne: false
             referencedRelation: "days"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      template_days: {
+        Row: {
+          created_at: string
+          day_number: number
+          id: string
+          is_locked: boolean
+          phase: string | null
+          sort_order: number
+          subtitle: string | null
+          template_id: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          day_number: number
+          id?: string
+          is_locked?: boolean
+          phase?: string | null
+          sort_order?: number
+          subtitle?: string | null
+          template_id: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          day_number?: number
+          id?: string
+          is_locked?: boolean
+          phase?: string | null
+          sort_order?: number
+          subtitle?: string | null
+          template_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "template_days_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "program_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      template_tasks: {
+        Row: {
+          content_html: string | null
+          created_at: string
+          description: string | null
+          id: string
+          is_locked: boolean
+          requires_rating: boolean
+          requires_upload: boolean
+          section: string
+          sort_order: number
+          source_reference: string | null
+          template_day_id: string
+          title: string
+        }
+        Insert: {
+          content_html?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_locked?: boolean
+          requires_rating?: boolean
+          requires_upload?: boolean
+          section: string
+          sort_order?: number
+          source_reference?: string | null
+          template_day_id: string
+          title: string
+        }
+        Update: {
+          content_html?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_locked?: boolean
+          requires_rating?: boolean
+          requires_upload?: boolean
+          section?: string
+          sort_order?: number
+          source_reference?: string | null
+          template_day_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "template_tasks_template_day_id_fkey"
+            columns: ["template_day_id"]
+            isOneToOne: false
+            referencedRelation: "template_days"
             referencedColumns: ["id"]
           },
         ]
