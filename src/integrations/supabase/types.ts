@@ -53,6 +53,7 @@ export type Database = {
         Row: {
           created_at: string
           day_number: number
+          department_id: string
           id: string
           phase: string
           store_id: string | null
@@ -63,6 +64,7 @@ export type Database = {
         Insert: {
           created_at?: string
           day_number: number
+          department_id: string
           id?: string
           phase: string
           store_id?: string | null
@@ -73,6 +75,7 @@ export type Database = {
         Update: {
           created_at?: string
           day_number?: number
+          department_id?: string
           id?: string
           phase?: string
           store_id?: string | null
@@ -82,6 +85,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "days_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "days_store_id_fkey"
             columns: ["store_id"]
             isOneToOne: false
@@ -90,12 +100,46 @@ export type Database = {
           },
         ]
       }
+      departments: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          label: string
+          slug: string
+          sort_order: number
+          typical_duration_days: number | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          label: string
+          slug: string
+          sort_order?: number
+          typical_duration_days?: number | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          label?: string
+          slug?: string
+          sort_order?: number
+          typical_duration_days?: number | null
+        }
+        Relationships: []
+      }
       invites: {
         Row: {
           accepted_at: string | null
           assigned_manager_id: string | null
           auto_start_onboarding: boolean
           created_at: string
+          department_id: string
           email: string
           expires_at: string
           id: string
@@ -110,6 +154,7 @@ export type Database = {
           assigned_manager_id?: string | null
           auto_start_onboarding?: boolean
           created_at?: string
+          department_id: string
           email: string
           expires_at?: string
           id?: string
@@ -124,6 +169,7 @@ export type Database = {
           assigned_manager_id?: string | null
           auto_start_onboarding?: boolean
           created_at?: string
+          department_id?: string
           email?: string
           expires_at?: string
           id?: string
@@ -134,6 +180,13 @@ export type Database = {
           token?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "invites_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "invites_store_id_fkey"
             columns: ["store_id"]
@@ -206,6 +259,7 @@ export type Database = {
           associate_id: string
           created_at: string
           current_day: number
+          department_id: string
           expected_end_date: string | null
           id: string
           manager_id: string
@@ -218,6 +272,7 @@ export type Database = {
           associate_id: string
           created_at?: string
           current_day?: number
+          department_id: string
           expected_end_date?: string | null
           id?: string
           manager_id: string
@@ -230,6 +285,7 @@ export type Database = {
           associate_id?: string
           created_at?: string
           current_day?: number
+          department_id?: string
           expected_end_date?: string | null
           id?: string
           manager_id?: string
@@ -238,6 +294,13 @@ export type Database = {
           store_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "onboarding_programs_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "onboarding_programs_store_id_fkey"
             columns: ["store_id"]

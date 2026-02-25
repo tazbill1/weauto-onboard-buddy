@@ -37,7 +37,7 @@ Deno.serve(async (req) => {
 
     const { data: invite, error } = await supabase
       .from("invites")
-      .select("email, role, store_id, status, expires_at, auto_start_onboarding, assigned_manager_id, stores(store_name)")
+      .select("email, role, store_id, status, expires_at, auto_start_onboarding, assigned_manager_id, department_id, stores(store_name)")
       .eq("token", token)
       .maybeSingle();
 
@@ -71,6 +71,7 @@ Deno.serve(async (req) => {
         store_name: (invite.stores as any)?.store_name || null,
         auto_start_onboarding: invite.auto_start_onboarding,
         assigned_manager_id: invite.assigned_manager_id,
+        department_id: invite.department_id,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

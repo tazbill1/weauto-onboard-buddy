@@ -34,6 +34,8 @@ import {
   useAllProfiles,
   useStores,
 } from "@/hooks/useDashboardData";
+import { useDepartments } from "@/hooks/useOnboardingData";
+import { DepartmentBadge } from "@/components/DepartmentBadge";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { friendlyDate } from "@/lib/dateUtils";
 
@@ -44,6 +46,8 @@ export default function HRAdminPage() {
   const { data: programs, isLoading } = useAllPrograms();
   const { data: profiles } = useAllProfiles();
   const { data: stores } = useStores();
+  const { data: departments } = useDepartments();
+  const deptMap = new Map(departments?.map((d) => [d.id, d.label]));
 
   useEffect(() => { document.title = "Team Status — WEAuto"; }, []);
 
@@ -92,6 +96,7 @@ export default function HRAdminPage() {
     }
     setCreating(true);
     try {
+      const salesDept = departments?.find((d) => d.slug === "sales");
       const { error } = await supabase.from("onboarding_programs" as any).insert({
         associate_id: selectedAssociate,
         manager_id: selectedManager,
@@ -99,6 +104,7 @@ export default function HRAdminPage() {
         start_date: format(startDate, "yyyy-MM-dd"),
         status: "active",
         current_day: 1,
+        department_id: salesDept?.id,
       } as any);
       if (error) throw error;
       toast({ title: "Program created!", description: "Onboarding has been started." });
@@ -231,6 +237,7 @@ export default function HRAdminPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-semibold text-foreground truncate">{p?.full_name || "Unknown"}</span>
+                        {deptMap.get(program.department_id) && <DepartmentBadge label={deptMap.get(program.department_id)!} />}
                         {isCompleted ? (
                           <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-success/10 text-success">
                             <CheckCircle2 className="h-3 w-3" /> Certified

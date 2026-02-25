@@ -2,6 +2,16 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 
+export interface Department {
+  id: string;
+  slug: string;
+  label: string;
+  description: string | null;
+  typical_duration_days: number | null;
+  is_active: boolean;
+  sort_order: number;
+}
+
 export interface Day {
   id: string;
   day_number: number;
@@ -9,6 +19,7 @@ export interface Day {
   phase: string;
   title: string;
   subtitle: string | null;
+  department_id: string;
 }
 
 export interface Task {
@@ -42,6 +53,7 @@ export interface OnboardingProgram {
   status: string;
   actual_end_date: string | null;
   expected_end_date: string | null;
+  department_id: string;
 }
 
 export interface PerformanceRating {
@@ -88,16 +100,53 @@ export interface UploadRecord {
   uploaded_at: string;
 }
 
-// ── Queries ──
+// ── Department hooks ──
 
-export function useDays() {
+export function useDepartments() {
   return useQuery({
-    queryKey: ["days"],
+    queryKey: ["departments"],
     queryFn: async () => {
       const { data, error } = await supabase
+        .from("departments" as any)
+        .select("*")
+        .eq("is_active", true)
+        .order("sort_order");
+      if (error) throw error;
+      return data as unknown as Department[];
+    },
+  });
+}
+
+export function useDepartment(departmentId: string | undefined) {
+  return useQuery({
+    queryKey: ["department", departmentId],
+    enabled: !!departmentId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("departments" as any)
+        .select("*")
+        .eq("id", departmentId!)
+        .single();
+      if (error) throw error;
+      return data as unknown as Department;
+    },
+  });
+}
+
+// ── Queries ──
+
+export function useDays(departmentId?: string) {
+  return useQuery({
+    queryKey: ["days", departmentId || "all"],
+    queryFn: async () => {
+      let query = supabase
         .from("days" as any)
         .select("*")
         .order("day_number");
+      if (departmentId) {
+        query = query.eq("department_id", departmentId);
+      }
+      const { data, error } = await query;
       if (error) throw error;
       return data as unknown as Day[];
     },

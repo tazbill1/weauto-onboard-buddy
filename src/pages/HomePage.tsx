@@ -20,6 +20,7 @@ import {
   useToggleCompletion,
   getPhaseLabel,
   getSectionLabel,
+  useDepartment,
 } from "@/hooks/useOnboardingData";
 import { useNotifications } from "@/hooks/useNotifications";
 import { relativeTime } from "@/lib/dateUtils";
@@ -34,8 +35,10 @@ export default function HomePage() {
   const isAssociate = profile?.role === "associate";
   const { show: showOnboarding, dismiss: dismissOnboarding } = useShowOnboarding();
 
-  const { data: days, isLoading: daysLoading } = useDays();
   const { data: program } = useMyProgram();
+  const departmentId = program?.department_id;
+  const { data: department } = useDepartment(departmentId);
+  const { data: days, isLoading: daysLoading } = useDays(departmentId);
   const { data: allTasks } = useAllTasks();
   const { data: completions } = useCompletions(program?.id);
   const toggleCompletion = useToggleCompletion();
@@ -49,14 +52,23 @@ export default function HomePage() {
   const currentDay = days?.find((d) => d.day_number === currentDayNumber);
   const { data: currentDayTasks } = useTasksForDay(currentDay?.id);
 
-  const totalTasks = allTasks?.length || 0;
+  // Filter tasks to only those belonging to days in this department
+  const departmentDayIds = new Set(days?.map((d) => d.id) || []);
+  const deptTasks = allTasks?.filter((t) => departmentDayIds.has(t.day_id)) || [];
+
+  const totalTasks = deptTasks.length;
   const completedCount = completions?.filter((c) => c.status === "completed").length || 0;
   const progress = totalTasks > 0 ? (completedCount / totalTasks) * 100 : 0;
 
+  // Dynamic total days
+  const totalDays = department?.typical_duration_days || days?.length || 20;
+
+  const noDaysYet = days && days.length === 0 && !!program;
+
   const completedDays = new Set<number>();
-  if (days && allTasks && completions) {
+  if (days && deptTasks.length > 0 && completions) {
     for (const day of days) {
-      const dayTasks = allTasks.filter((t) => t.day_id === day.id);
+      const dayTasks = deptTasks.filter((t) => t.day_id === day.id);
       if (dayTasks.length > 0 && dayTasks.every((t) => completions.some((c) => c.task_id === t.id && c.status === "completed"))) {
         completedDays.add(day.day_number);
       }
@@ -100,11 +112,11 @@ export default function HomePage() {
             <div className="flex items-center gap-5">
               <div className="flex-1">
                 <p className="text-xs font-semibold uppercase tracking-wider text-secondary">
-                  {currentDay ? getPhaseLabel(currentDay.phase) : ""}
+                  {currentDay ? getPhaseLabel(currentDay.phase) : (department?.label || "")}
                 </p>
                 <p className="mt-1 text-4xl font-extrabold text-foreground">
                   Day {currentDayNumber}
-                  <span className="text-lg font-medium text-muted-foreground"> / 20</span>
+                  <span className="text-lg font-medium text-muted-foreground"> / {totalDays}</span>
                 </p>
                 <p className="mt-1 text-sm font-medium text-foreground">{currentDay?.title}</p>
               </div>
@@ -174,6 +186,12 @@ export default function HomePage() {
               title="No active program yet"
               description="HR will set up your onboarding when you're ready to begin."
             />
+          ) : noDaysYet ? (
+            <Card className="p-6 text-center">
+              <Clock className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+              <p className="text-sm font-bold text-foreground mb-1">Your onboarding program is being prepared</p>
+              <p className="text-xs text-muted-foreground">Your manager will notify you when training content is ready.</p>
+            </Card>
           ) : (
             <div className="space-y-4">
               {Object.entries(tasksBySection).map(([section, tasks]) => (
@@ -203,7 +221,7 @@ export default function HomePage() {
           )}
         </div>
 
-        {days && days.length > 0 && (
+        {days && days.length > 0 && !noDaysYet && (
           <div>
             <h2 className="text-base font-bold text-foreground mb-3">Your Journey</h2>
             <DayTimeline days={days} currentDay={currentDayNumber} completedDays={completedDays} />

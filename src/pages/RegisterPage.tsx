@@ -25,6 +25,7 @@ interface InviteData {
   auto_start_onboarding: boolean;
   assigned_manager_id: string | null;
   store_name: string | null;
+  department_id: string | null;
 }
 
 export default function RegisterPage() {
@@ -72,6 +73,7 @@ export default function RegisterPage() {
             auto_start_onboarding: data.auto_start_onboarding,
             assigned_manager_id: data.assigned_manager_id,
             store_name: data.store_name,
+            department_id: data.department_id || null,
           });
           setEmail(data.email);
           setInviteStatus("valid");
@@ -114,14 +116,18 @@ export default function RegisterPage() {
 
     // Auto-create onboarding program if applicable
     if (authData.user && invite.auto_start_onboarding && invite.role === "associate" && invite.assigned_manager_id) {
-      await supabase.from("onboarding_programs" as any).insert({
+      const insertData: any = {
         associate_id: authData.user.id,
         manager_id: invite.assigned_manager_id,
         store_id: invite.store_id,
         start_date: format(new Date(), "yyyy-MM-dd"),
         status: "active",
         current_day: 1,
-      } as any);
+      };
+      if (invite.department_id) {
+        insertData.department_id = invite.department_id;
+      }
+      await supabase.from("onboarding_programs" as any).insert(insertData as any);
     }
 
     setLoading(false);

@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { ProgressRing } from "@/components/ProgressRing";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Check, AlertTriangle, X, BookOpen, Dumbbell, Briefcase, ChevronRight, Trophy } from "lucide-react";
+import { Check, AlertTriangle, X, Briefcase, ChevronRight, Trophy, Clock } from "lucide-react";
 import {
   useDays,
   useMyProgram,
@@ -14,6 +14,7 @@ import {
   useRatingsForProgram,
   useSignoffsForProgram,
   getPhaseLabel,
+  useDepartment,
 } from "@/hooks/useOnboardingData";
 
 const PHASES = [
@@ -54,8 +55,10 @@ function RatingSummary({ ratings }: { ratings: Array<{ rating: string }> }) {
 
 export default function ProgressPage() {
   const navigate = useNavigate();
-  const { data: days } = useDays();
   const { data: program } = useMyProgram();
+  const departmentId = program?.department_id;
+  const { data: department } = useDepartment(departmentId);
+  const { data: days } = useDays(departmentId);
   const { data: allTasks } = useAllTasks();
   const { data: completions } = useCompletions(program?.id);
   const { data: ratings } = useRatingsForProgram(program?.id);
@@ -63,27 +66,35 @@ export default function ProgressPage() {
 
   useEffect(() => { document.title = "My Progress — WEAuto"; }, []);
 
+  // Filter tasks to department days
+  const departmentDayIds = useMemo(() => new Set(days?.map((d) => d.id) || []), [days]);
+  const deptTasks = useMemo(() => allTasks?.filter((t) => departmentDayIds.has(t.day_id)) || [], [allTasks, departmentDayIds]);
+
   const completionMap = useMemo(
     () => new Map(completions?.map((c) => [c.task_id, c])),
     [completions]
   );
 
-  const totalTasks = allTasks?.length || 0;
+  const totalTasks = deptTasks.length;
   const completedCount = completions?.filter((c) => c.status === "completed").length || 0;
   const overallProgress = totalTasks > 0 ? (completedCount / totalTasks) * 100 : 0;
+
+  const totalDays = department?.typical_duration_days || days?.length || 20;
+  const isSales = department?.slug === "sales";
+  const noDaysYet = days && days.length === 0 && !!program;
 
   const signedOffDays = useMemo(() => new Set(signoffs?.map((s) => s.day_number) || []), [signoffs]);
 
   const phaseStats = useMemo(() => {
-    if (!days || !allTasks) return {};
+    if (!days || !deptTasks.length) return {};
     return PHASES.reduce((acc, phase) => {
       const phaseDays = days.filter((d) => phase.days.includes(d.day_number));
-      const phaseTasks = allTasks.filter((t) => phaseDays.some((d) => d.id === t.day_id));
+      const phaseTasks = deptTasks.filter((t) => phaseDays.some((d) => d.id === t.day_id));
       const phaseCompleted = phaseTasks.filter((t) => completionMap.get(t.id)?.status === "completed").length;
       acc[phase.key] = { total: phaseTasks.length, completed: phaseCompleted };
       return acc;
     }, {} as Record<string, { total: number; completed: number }>);
-  }, [days, allTasks, completionMap]);
+  }, [days, deptTasks, completionMap]);
 
   const isCompleted = program?.status === "completed";
 
@@ -107,6 +118,12 @@ export default function ProgressPage() {
         {/* Overall Summary */}
         {!days ? (
           <Skeleton className="h-32 w-full rounded-2xl" />
+        ) : noDaysYet ? (
+          <Card className="p-6 text-center">
+            <Clock className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+            <p className="text-sm font-bold text-foreground mb-1">Your onboarding program is being prepared</p>
+            <p className="text-xs text-muted-foreground">Your manager will notify you when training content is ready.</p>
+          </Card>
         ) : (
           <Card className="p-5">
             {isCompleted ? (
@@ -117,7 +134,7 @@ export default function ProgressPage() {
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wider text-success">Program Complete</p>
                   <p className="text-lg font-bold text-foreground mt-0.5">Certified! 🎉</p>
-                  <p className="text-xs text-muted-foreground">All 20 days completed</p>
+                  <p className="text-xs text-muted-foreground">All {totalDays} days completed</p>
                 </div>
               </div>
             ) : (
@@ -125,7 +142,7 @@ export default function ProgressPage() {
                 <ProgressRing progress={overallProgress} size={90} strokeWidth={6} />
                 <div className="flex-1">
                   <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Overall Progress</p>
-                  <p className="text-3xl font-extrabold text-foreground mt-1">Day {program.current_day}<span className="text-lg font-medium text-muted-foreground"> / 20</span></p>
+                  <p className="text-3xl font-extrabold text-foreground mt-1">Day {program.current_day}<span className="text-lg font-medium text-muted-foreground"> / {totalDays}</span></p>
                   <p className="text-xs text-muted-foreground mt-0.5">{completedCount} of {totalTasks} tasks completed</p>
                 </div>
               </div>
@@ -142,61 +159,93 @@ export default function ProgressPage() {
           </Card>
         )}
 
-        {/* Phase Breakdown */}
-        <div className="space-y-3">
-          <h2 className="text-base font-bold text-foreground">Phase Breakdown</h2>
-          {PHASES.map((phase) => {
-            const stats = phaseStats[phase.key] || { total: 0, completed: 0 };
-            const pct = stats.total > 0 ? (stats.completed / stats.total) * 100 : 0;
-            const phaseDayNums = phase.days;
-            const signedOffInPhase = phaseDayNums.filter((d) => signedOffDays.has(d)).length;
+        {/* Phase Breakdown - Sales only */}
+        {!noDaysYet && isSales && (
+          <div className="space-y-3">
+            <h2 className="text-base font-bold text-foreground">Phase Breakdown</h2>
+            {PHASES.map((phase) => {
+              const stats = phaseStats[phase.key] || { total: 0, completed: 0 };
+              const pct = stats.total > 0 ? (stats.completed / stats.total) * 100 : 0;
+              const phaseDayNums = phase.days;
+              const signedOffInPhase = phaseDayNums.filter((d) => signedOffDays.has(d)).length;
 
-            return (
-              <Card key={phase.key} className="p-4">
-                <div className="flex items-start justify-between mb-3">
-                  <div>
-                    <p className={`text-xs font-semibold uppercase tracking-wider ${phase.color}`}>{phase.week}</p>
-                    <p className="text-sm font-bold text-foreground">{phase.label}</p>
+              return (
+                <Card key={phase.key} className="p-4">
+                  <div className="flex items-start justify-between mb-3">
+                    <div>
+                      <p className={`text-xs font-semibold uppercase tracking-wider ${phase.color}`}>{phase.week}</p>
+                      <p className="text-sm font-bold text-foreground">{phase.label}</p>
+                    </div>
+                    <div className={`text-xs font-bold px-2 py-1 rounded-full ${phase.bg} ${phase.color}`}>
+                      {stats.completed}/{stats.total}
+                    </div>
                   </div>
-                  <div className={`text-xs font-bold px-2 py-1 rounded-full ${phase.bg} ${phase.color}`}>
-                    {stats.completed}/{stats.total}
+                  <Progress value={pct} className="h-2 mb-3" />
+                  <div className="flex gap-1.5 flex-wrap">
+                    {phaseDayNums.map((dayNum) => {
+                      const isSigned = signedOffDays.has(dayNum);
+                      const isCurrent = dayNum === program.current_day;
+                      const isPast = dayNum < program.current_day;
+                      return (
+                        <button
+                          key={dayNum}
+                          onClick={() => navigate(`/day/${dayNum}`)}
+                          className={`h-8 w-8 rounded-full text-xs font-bold transition-all ${
+                            isSigned
+                              ? "bg-success text-success-foreground"
+                              : isCurrent
+                              ? "bg-primary text-primary-foreground ring-2 ring-primary/30"
+                              : isPast
+                              ? "bg-muted text-muted-foreground"
+                              : "bg-muted/50 text-muted-foreground/50"
+                          }`}
+                        >
+                          {dayNum}
+                        </button>
+                      );
+                    })}
                   </div>
-                </div>
-                <Progress value={pct} className="h-2 mb-3" />
-                {/* Day chips */}
-                <div className="flex gap-1.5 flex-wrap">
-                  {phaseDayNums.map((dayNum) => {
-                    const isSigned = signedOffDays.has(dayNum);
-                    const isCurrent = dayNum === program.current_day;
-                    const isPast = dayNum < program.current_day;
-                    return (
-                      <button
-                        key={dayNum}
-                        onClick={() => navigate(`/day/${dayNum}`)}
-                        className={`h-8 w-8 rounded-full text-xs font-bold transition-all ${
-                          isSigned
-                            ? "bg-success text-success-foreground"
-                            : isCurrent
-                            ? "bg-primary text-primary-foreground ring-2 ring-primary/30"
-                            : isPast
-                            ? "bg-muted text-muted-foreground"
-                            : "bg-muted/50 text-muted-foreground/50"
-                        }`}
-                      >
-                        {dayNum}
-                      </button>
-                    );
-                  })}
-                </div>
-                {signedOffInPhase > 0 && (
-                  <p className="text-[10px] text-muted-foreground mt-2">
-                    {signedOffInPhase} of {phaseDayNums.length} days signed off by manager
-                  </p>
-                )}
-              </Card>
-            );
-          })}
-        </div>
+                  {signedOffInPhase > 0 && (
+                    <p className="text-[10px] text-muted-foreground mt-2">
+                      {signedOffInPhase} of {phaseDayNums.length} days signed off by manager
+                    </p>
+                  )}
+                </Card>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Simple day list for non-sales departments */}
+        {!noDaysYet && !isSales && days && days.length > 0 && (
+          <div className="space-y-3">
+            <h2 className="text-base font-bold text-foreground">Training Days</h2>
+            <div className="flex gap-1.5 flex-wrap">
+              {days.map((day) => {
+                const isSigned = signedOffDays.has(day.day_number);
+                const isCurrent = day.day_number === program.current_day;
+                const isPast = day.day_number < program.current_day;
+                return (
+                  <button
+                    key={day.id}
+                    onClick={() => navigate(`/day/${day.day_number}`)}
+                    className={`h-9 w-9 rounded-full text-xs font-bold transition-all ${
+                      isSigned
+                        ? "bg-success text-success-foreground"
+                        : isCurrent
+                        ? "bg-primary text-primary-foreground ring-2 ring-primary/30"
+                        : isPast
+                        ? "bg-muted text-muted-foreground"
+                        : "bg-muted/50 text-muted-foreground/50"
+                    }`}
+                  >
+                    {day.day_number}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
     </AppShell>
   );

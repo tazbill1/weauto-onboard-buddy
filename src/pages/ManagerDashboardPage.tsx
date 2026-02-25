@@ -22,10 +22,12 @@ import {
   useSignoffsForProgram,
   getPhaseLabel,
   getAssociateStatus,
+  useDepartments,
 } from "@/hooks/useOnboardingData";
-import type { OnboardingProgram, PerformanceRating, ProfileBasic, Day, DailySignoff } from "@/hooks/useOnboardingData";
+import type { OnboardingProgram, PerformanceRating, ProfileBasic, Day, DailySignoff, Department } from "@/hooks/useOnboardingData";
 import { useNotifications } from "@/hooks/useNotifications";
 import { InviteFAB } from "@/components/InviteFAB";
+import { DepartmentBadge } from "@/components/DepartmentBadge";
 import { Users, Video, Image, FileText, Clock, Trophy, ChevronDown, ChevronUp, CheckSquare } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 
@@ -56,6 +58,7 @@ function AssociateCard({
   ratings,
   days,
   onCompleted,
+  departmentLabel,
 }: {
   program: OnboardingProgram;
   profile: ProfileBasic | undefined;
@@ -63,6 +66,7 @@ function AssociateCard({
   ratings: PerformanceRating[];
   days: Day[];
   onCompleted: () => void;
+  departmentLabel?: string;
 }) {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -156,6 +160,7 @@ function AssociateCard({
             <h3 className="text-sm font-bold text-foreground truncate">
               {profile?.full_name || "Unknown"}
             </h3>
+            {departmentLabel && <DepartmentBadge label={departmentLabel} />}
             <StatusBadge status={status} />
           </div>
           <p className="text-xs text-muted-foreground mt-0.5">
@@ -275,7 +280,10 @@ export default function ManagerDashboardPage() {
   const { data: days } = useDays();
   const { data: pendingUploads } = usePendingUploads();
   const { data: notifications } = useNotifications();
+  const { data: departments } = useDepartments();
   const navigate = useNavigate();
+
+  const deptMap = new Map(departments?.map((d) => [d.id, d.label]));
 
   const programs = isManager ? managedPrograms : allPrograms;
   const isLoading = isManager ? managedLoading : allLoading;
@@ -400,6 +408,7 @@ export default function ManagerDashboardPage() {
                   ratings={[]}
                   days={days || []}
                   onCompleted={() => queryClient.invalidateQueries({ queryKey: ["managed-programs"] })}
+                  departmentLabel={deptMap.get(program.department_id)}
                 />
               ))}
             </div>
