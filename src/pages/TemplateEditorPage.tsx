@@ -45,6 +45,7 @@ import {
   UserCheck,
   Save,
   Rocket,
+  FileText,
 } from "lucide-react";
 
 const sectionIcons: Record<string, typeof BookOpen> = {
@@ -194,7 +195,14 @@ export default function TemplateEditorPage() {
   if (!template) {
     return (
       <AppShell>
-        <div className="p-8 text-center text-muted-foreground">Template not found.</div>
+        <div className="flex flex-col items-center justify-center px-6 py-20 text-center gap-4">
+          <FileText className="h-12 w-12 text-muted-foreground" />
+          <h1 className="text-xl font-bold text-foreground">Template not found</h1>
+          <p className="text-sm text-muted-foreground">This template may have been deleted or you don't have access.</p>
+          <Button variant="outline" onClick={() => navigate("/content-admin")} className="gap-2">
+            <ArrowLeft className="h-4 w-4" /> Back to Content Admin
+          </Button>
+        </div>
       </AppShell>
     );
   }

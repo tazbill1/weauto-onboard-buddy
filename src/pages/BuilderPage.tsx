@@ -133,6 +133,9 @@ export default function BuilderPage() {
         await updateSession({ status: "reviewing", messages: updated as any });
       }
     } catch (err: any) {
+      const errorMsg: ChatMessage = { role: "assistant", content: "⚠️ Something went wrong. Please try again." };
+      const updatedWithError = [...msgs, errorMsg];
+      await updateSession({ messages: updatedWithError as any });
       toast({ title: "AI Error", description: err.message, variant: "destructive" });
     } finally {
       setSending(false);
