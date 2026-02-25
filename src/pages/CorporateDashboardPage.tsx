@@ -136,9 +136,14 @@ export default function CorporateDashboardPage() {
       <div className="px-4 py-6 animate-fade-in space-y-5">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold text-foreground">All Stores Overview</h1>
-          <Button variant="outline" size="sm" onClick={() => navigate("/content-admin")} className="gap-1.5">
-            <BookOpen className="h-4 w-4" /> Content
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => navigate("/locations")} className="gap-1.5">
+              <Building2 className="h-4 w-4" /> Locations
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => navigate("/content-admin")} className="gap-1.5">
+              <BookOpen className="h-4 w-4" /> Content
+            </Button>
+          </div>
         </div>
 
         {/* Aggregate Metrics */}
