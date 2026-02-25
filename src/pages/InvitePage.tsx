@@ -30,25 +30,8 @@ import type { Department } from "@/hooks/useOnboardingData";
 import { Send, RotateCw, XCircle, UserPlus, Copy, CheckCheck, Link as LinkIcon, UserCog, AlertTriangle, Sparkles } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
-const roleLabels: Record<string, string> = {
-  associate: "Associate",
-  sales_manager: "Sales Manager",
-  gm: "General Manager",
-  hr_admin: "HR Admin",
-  corporate_admin: "Corporate Admin",
-};
-
-type AppRole = "associate" | "sales_manager" | "gm" | "hr_admin" | "corporate_admin";
-
-function getAllowedRoles(myRole: AppRole): AppRole[] {
-  switch (myRole) {
-    case "sales_manager": return ["associate"];
-    case "gm": return ["associate", "sales_manager"];
-    case "hr_admin": return ["associate", "sales_manager"];
-    case "corporate_admin": return ["associate", "sales_manager", "gm", "hr_admin"];
-    default: return [];
-  }
-}
+import { roleLabels, getAllowedRoles, isAdmin, isManagerOrAbove, normalizeRole } from "@/lib/roles";
+import type { AppRole } from "@/lib/roles";
 
 export default function InvitePage() {
   const { profile } = useAuth();
@@ -58,7 +41,7 @@ export default function InvitePage() {
 
   // Invite tab state
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState<AppRole>("associate");
+  const [role, setRole] = useState<AppRole>("user");
   const [storeId, setStoreId] = useState("");
   const [managerId, setManagerId] = useState("");
   const [autoStart, setAutoStart] = useState(true);
@@ -79,7 +62,7 @@ export default function InvitePage() {
   const [addEmail, setAddEmail] = useState("");
   const [addFullName, setAddFullName] = useState("");
   const [addPassword, setAddPassword] = useState("");
-  const [addRole, setAddRole] = useState<AppRole>("associate");
+  const [addRole, setAddRole] = useState<AppRole>("user");
   const [addStoreId, setAddStoreId] = useState("");
   const [addManagerId, setAddManagerId] = useState("");
   const [addAutoStart, setAddAutoStart] = useState(true);
@@ -87,7 +70,7 @@ export default function InvitePage() {
 
   const myRole = profile?.role as AppRole;
   const allowedRoles = useMemo(() => getAllowedRoles(myRole), [myRole]);
-  const isCorporateAdmin = myRole === "corporate_admin";
+  const isCorporateAdmin = isAdmin(myRole);
 
   useEffect(() => { document.title = "Invite — WEAuto"; }, []);
 
@@ -113,7 +96,7 @@ export default function InvitePage() {
   }, [profile, isCorporateAdmin]);
 
   useEffect(() => {
-    if (myRole === "sales_manager" && profile?.user_id) {
+    if (myRole === "manager" && profile?.user_id) {
       setManagerId(profile.user_id);
       setAddManagerId(profile.user_id);
     }
@@ -141,13 +124,13 @@ export default function InvitePage() {
 
   const { data: storeManagers } = useQuery({
     queryKey: ["store-managers", storeId],
-    enabled: !!storeId && role === "associate",
+    enabled: !!storeId && role === "user",
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
         .select("user_id, full_name, email, role")
         .eq("store_id", storeId)
-        .eq("role", "sales_manager")
+        .in("role", ["manager", "sales_manager"] as any[])
         .eq("is_active", true);
       if (error) throw error;
       return data;
@@ -156,13 +139,13 @@ export default function InvitePage() {
 
   const { data: addStoreManagers } = useQuery({
     queryKey: ["store-managers-add", addStoreId],
-    enabled: !!addStoreId && addRole === "associate",
+    enabled: !!addStoreId && addRole === "user",
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
         .select("user_id, full_name, email, role")
         .eq("store_id", addStoreId)
-        .eq("role", "sales_manager")
+        .in("role", ["manager", "sales_manager"] as any[])
         .eq("is_active", true);
       if (error) throw error;
       return data;
@@ -183,7 +166,7 @@ export default function InvitePage() {
 
   const checkDeptAndProceed = (action: "send" | "add", deptId: string) => {
     const hasContent = (deptDayCounts?.[deptId] || 0) > 0;
-    if (!hasContent && (action === "send" ? role : addRole) === "associate") {
+    if (!hasContent && (action === "send" ? role : addRole) === "user") {
       setPendingAction(action);
       setShowEmptyDeptWarning(true);
       return false;
@@ -197,7 +180,7 @@ export default function InvitePage() {
   const handleSend = async () => {
     if (!email || !storeId) return;
     // Check department content for associates
-    if (role === "associate" && departmentId && !checkDeptAndProceed("send", departmentId)) return;
+    if (role === "user" && departmentId && !checkDeptAndProceed("send", departmentId)) return;
     await doSend();
   };
 
@@ -224,9 +207,9 @@ export default function InvitePage() {
       const storeName = stores?.find(s => s.id === storeId)?.store_name || "your store";
       const { data: invite, error } = await supabase.from("invites" as any).insert({
         email, role, store_id: storeId, invited_by: profile?.user_id,
-        assigned_manager_id: role === "associate" && managerId ? managerId : null,
-        auto_start_onboarding: role === "associate" ? autoStart : false,
-        department_id: role === "associate" && departmentId ? departmentId : (departments?.find((d) => d.slug === "sales")?.id || null),
+        assigned_manager_id: role === "user" && managerId ? managerId : null,
+        auto_start_onboarding: role === "user" ? autoStart : false,
+        department_id: role === "user" && departmentId ? departmentId : (departments?.find((d) => d.slug === "sales")?.id || null),
       } as any).select("token").single();
 
       if (error) throw error;
@@ -242,8 +225,8 @@ export default function InvitePage() {
 
       toast({ title: "Invite created!", description: `Share the link below with ${email}` });
       setEmail("");
-      setRole("associate");
-      setManagerId(myRole === "sales_manager" ? profile?.user_id || "" : "");
+      setRole("user");
+      setManagerId(myRole === "manager" ? profile?.user_id || "" : "");
       if (isCorporateAdmin) setStoreId("");
       queryClient.invalidateQueries({ queryKey: ["invites"] });
     } catch (err: any) {
@@ -260,7 +243,7 @@ export default function InvitePage() {
       return;
     }
     // Check department content for associates
-    if (addRole === "associate" && addDepartmentId && !checkDeptAndProceed("add", addDepartmentId)) return;
+    if (addRole === "user" && addDepartmentId && !checkDeptAndProceed("add", addDepartmentId)) return;
     await doAddUser();
   };
 
@@ -275,9 +258,9 @@ export default function InvitePage() {
           role: addRole,
           storeId: addStoreId,
           fullName: addFullName,
-          managerId: addRole === "associate" ? addManagerId : null,
-          autoStart: addRole === "associate" ? addAutoStart : false,
-          departmentId: addRole === "associate" ? addDepartmentId : null,
+          managerId: addRole === "user" ? addManagerId : null,
+          autoStart: addRole === "user" ? addAutoStart : false,
+          departmentId: addRole === "user" ? addDepartmentId : null,
         },
       });
 
@@ -291,8 +274,8 @@ export default function InvitePage() {
       setAddEmail("");
       setAddFullName("");
       setAddPassword("");
-      setAddRole("associate");
-      setAddManagerId(myRole === "sales_manager" ? profile?.user_id || "" : "");
+      setAddRole("user");
+      setAddManagerId(myRole === "manager" ? profile?.user_id || "" : "");
       if (isCorporateAdmin) setAddStoreId("");
     } catch (err: any) {
       toast({ title: "Error creating user", description: err.message, variant: "destructive" });
@@ -398,7 +381,7 @@ export default function InvitePage() {
                 </div>
               )}
 
-              {addRole === "associate" && myRole !== "sales_manager" && (
+              {addRole === "user" && myRole !== "manager" && (
                 <div className="space-y-2">
                   <Label>Assigned Manager</Label>
                   <Select value={addManagerId} onValueChange={setAddManagerId}>
@@ -411,7 +394,7 @@ export default function InvitePage() {
                 </div>
               )}
 
-              {addRole === "associate" && (
+              {addRole === "user" && (
                 <div className="space-y-2">
                   <Label>Department</Label>
                   <Select value={addDepartmentId} onValueChange={setAddDepartmentId}>
@@ -428,7 +411,7 @@ export default function InvitePage() {
                 </div>
               )}
 
-              {addRole === "associate" && (
+              {addRole === "user" && (
                 <div className="flex items-center justify-between py-2">
                   <div>
                     <Label className="text-sm">Auto-start onboarding</Label>
@@ -475,7 +458,7 @@ export default function InvitePage() {
                 </div>
               )}
 
-              {role === "associate" && myRole !== "sales_manager" && (
+              {role === "user" && myRole !== "manager" && (
                 <div className="space-y-2">
                   <Label>Assigned Manager</Label>
                   <Select value={managerId} onValueChange={setManagerId}>
@@ -488,7 +471,7 @@ export default function InvitePage() {
                 </div>
               )}
 
-              {role === "associate" && (
+              {role === "user" && (
                 <div className="space-y-2">
                   <Label>Department</Label>
                   <Select value={departmentId} onValueChange={setDepartmentId}>
@@ -505,7 +488,7 @@ export default function InvitePage() {
                 </div>
               )}
 
-              {role === "associate" && (
+              {role === "user" && (
                 <div className="flex items-center justify-between py-2">
                   <div>
                     <Label className="text-sm">Auto-start onboarding on registration</Label>

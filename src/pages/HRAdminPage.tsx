@@ -73,14 +73,14 @@ export default function HRAdminPage() {
     if (!profiles || !programs) return [];
     const activeAssociateIds = new Set(programs.filter((p) => p.status === "active").map((p) => p.associate_id));
     return profiles.filter(
-      (p) => p.role === "associate" && !activeAssociateIds.has(p.user_id) && (!storeId || p.store_id === storeId)
+      (p) => (p.role === "user" || p.role === "associate") && !activeAssociateIds.has(p.user_id) && (!storeId || p.store_id === storeId)
     );
   }, [profiles, programs, storeId]);
 
   const managers = useMemo(() => {
     if (!profiles) return [];
     return profiles.filter(
-      (p) => ["sales_manager", "gm"].includes(p.role) && (!storeId || p.store_id === storeId)
+      (p) => ["manager", "sales_manager", "location_admin", "gm"].includes(p.role) && (!storeId || p.store_id === storeId)
     );
   }, [profiles, storeId]);
 

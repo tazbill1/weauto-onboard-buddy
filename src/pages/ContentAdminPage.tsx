@@ -138,7 +138,7 @@ export default function ContentAdminPage() {
     }
   }, [departments, selectedDeptId]);
 
-  if (profile?.role !== "corporate_admin") {
+  if (profile?.role !== "app_admin") {
     return <Navigate to="/" replace />;
   }
 

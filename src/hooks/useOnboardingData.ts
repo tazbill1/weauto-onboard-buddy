@@ -363,7 +363,7 @@ export function useManagedPrograms() {
     queryKey: ["managed-programs", user?.id, profile?.role, profile?.store_id],
     enabled: !!user?.id && !!profile,
     queryFn: async () => {
-      if (profile!.role === 'sales_manager') {
+      if (profile!.role === 'manager') {
         const { data, error } = await supabase
           .from("onboarding_programs" as any)
           .select("*")
@@ -373,7 +373,7 @@ export function useManagedPrograms() {
         return data as unknown as OnboardingProgram[];
       }
 
-      if (profile!.role === 'gm') {
+      if (profile!.role === 'location_admin') {
         const { data, error } = await supabase
           .from("onboarding_programs" as any)
           .select("*")
@@ -550,7 +550,7 @@ export function usePendingUploads() {
     queryKey: ["pending-uploads", profile?.store_id, profile?.role],
     enabled: !!profile,
     queryFn: async () => {
-      if (profile!.role === 'corporate_admin') {
+      if (profile!.role === 'app_admin') {
         const { data, error } = await supabase
           .from("uploads" as any)
           .select("*")

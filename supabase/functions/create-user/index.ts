@@ -44,7 +44,7 @@ Deno.serve(async (req) => {
       .eq("user_id", caller.id)
       .single();
 
-    const allowedRoles = ["sales_manager", "gm", "hr_admin", "corporate_admin"];
+    const allowedRoles = ["manager", "location_admin", "app_admin", "sales_manager", "gm", "hr_admin", "corporate_admin"];
     if (!callerProfile || !allowedRoles.includes(callerProfile.role)) {
       return new Response(JSON.stringify({ error: "Forbidden" }), {
         status: 403,
@@ -99,7 +99,7 @@ Deno.serve(async (req) => {
     }
 
     // Auto-start onboarding if requested
-    if (role === "associate" && autoStart && managerId) {
+    if ((role === "user" || role === "associate") && autoStart && managerId) {
       const insertData: Record<string, unknown> = {
         associate_id: newUser.user.id,
         manager_id: managerId,

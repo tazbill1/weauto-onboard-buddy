@@ -2,11 +2,12 @@ import { useAuth } from "@/lib/auth";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   Home, BarChart3, BookOpen, Bell, User, Users, ClipboardCheck,
-  Building2, FileText, LayoutDashboard, Settings, UserCog
+  Building2, FileText, LayoutDashboard, UserCog
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { usePendingUploads } from "@/hooks/useOnboardingData";
 import { useUnreadCount } from "@/hooks/useNotifications";
+import { isManagerOrAbove } from "@/lib/roles";
 
 interface NavItem {
   label: string;
@@ -16,36 +17,29 @@ interface NavItem {
 }
 
 const navByRole: Record<string, NavItem[]> = {
-  associate: [
+  user: [
     { label: "Home", icon: Home, path: "/" },
     { label: "Progress", icon: BarChart3, path: "/progress" },
     { label: "Content", icon: BookOpen, path: "/content" },
     { label: "Alerts", icon: Bell, path: "/notifications" },
     { label: "Profile", icon: User, path: "/profile" },
   ],
-  sales_manager: [
+  manager: [
     { label: "Dashboard", icon: LayoutDashboard, path: "/" },
     { label: "My Team", icon: Users, path: "/team" },
     { label: "Reviews", icon: ClipboardCheck, path: "/reviews", badgeKey: "pending" },
     { label: "Alerts", icon: Bell, path: "/notifications" },
     { label: "Profile", icon: User, path: "/profile" },
   ],
-  gm: [
+  location_admin: [
     { label: "Overview", icon: LayoutDashboard, path: "/" },
     { label: "Reviews", icon: ClipboardCheck, path: "/reviews", badgeKey: "pending" },
     { label: "Reports", icon: FileText, path: "/reports" },
     { label: "Alerts", icon: Bell, path: "/notifications" },
     { label: "Profile", icon: User, path: "/profile" },
   ],
-  corporate_admin: [
+  app_admin: [
     { label: "Stores", icon: Building2, path: "/" },
-    { label: "Reviews", icon: ClipboardCheck, path: "/reviews", badgeKey: "pending" },
-    { label: "Users", icon: UserCog, path: "/users" },
-    { label: "Alerts", icon: Bell, path: "/notifications" },
-    { label: "Profile", icon: User, path: "/profile" },
-  ],
-  hr_admin: [
-    { label: "Team", icon: Users, path: "/" },
     { label: "Reviews", icon: ClipboardCheck, path: "/reviews", badgeKey: "pending" },
     { label: "Users", icon: UserCog, path: "/users" },
     { label: "Alerts", icon: Bell, path: "/notifications" },
@@ -63,9 +57,8 @@ export function BottomNav() {
 
   if (!profile) return null;
 
-  const items = navByRole[profile.role] || navByRole.associate;
-  const isManagerRole = ["sales_manager", "gm", "hr_admin", "corporate_admin"].includes(profile.role);
-  const pendingCount = isManagerRole ? (pendingUploads?.length || 0) : 0;
+  const items = navByRole[profile.role] || navByRole.user;
+  const pendingCount = isManagerOrAbove(profile.role) ? (pendingUploads?.length || 0) : 0;
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-card shadow-[0_-2px_10px_rgba(0,0,0,0.06)] safe-area-bottom">

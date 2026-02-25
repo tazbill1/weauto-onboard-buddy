@@ -41,7 +41,6 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, profile, loading } = useAuth();
   if (loading || (user && !profile)) return <div className="flex min-h-screen items-center justify-center text-muted-foreground">Loading…</div>;
   if (!user) return <Navigate to="/login" replace />;
-  // Force password change for admin-created accounts
   if (profile?.must_change_password && window.location.pathname !== "/change-password") {
     return <Navigate to="/change-password" replace />;
   }
@@ -66,24 +65,24 @@ function AppRoutes() {
       <Route path="/" element={<ProtectedRoute><HomePage /></ProtectedRoute>} />
       <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
       <Route path="/day/:dayNumber" element={<ProtectedRoute><DayViewPage /></ProtectedRoute>} />
-      <Route path="/checkin/:programId/:dayNumber" element={<ProtectedRoute><RoleGuard allowedRoles={['sales_manager', 'gm', 'corporate_admin']}><CheckInPage /></RoleGuard></ProtectedRoute>} />
-      <Route path="/review/:uploadId" element={<ProtectedRoute><RoleGuard allowedRoles={['sales_manager', 'gm', 'corporate_admin']}><ReviewUploadPage /></RoleGuard></ProtectedRoute>} />
+      <Route path="/checkin/:programId/:dayNumber" element={<ProtectedRoute><RoleGuard allowedRoles={['manager', 'location_admin', 'app_admin']}><CheckInPage /></RoleGuard></ProtectedRoute>} />
+      <Route path="/review/:uploadId" element={<ProtectedRoute><RoleGuard allowedRoles={['manager', 'location_admin', 'app_admin']}><ReviewUploadPage /></RoleGuard></ProtectedRoute>} />
       <Route path="/progress" element={<ProtectedRoute><ProgressPage /></ProtectedRoute>} />
       <Route path="/content" element={<ProtectedRoute><PlaceholderPage title="Content Library" /></ProtectedRoute>} />
       <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
-      <Route path="/team" element={<ProtectedRoute><RoleGuard allowedRoles={['sales_manager', 'corporate_admin']}><ManagerDashboardPage /></RoleGuard></ProtectedRoute>} />
-      <Route path="/reviews" element={<ProtectedRoute><RoleGuard allowedRoles={['sales_manager', 'gm', 'corporate_admin']}><ReviewsListPage /></RoleGuard></ProtectedRoute>} />
-      <Route path="/stores" element={<ProtectedRoute><RoleGuard allowedRoles={['gm', 'corporate_admin']}><GMOverviewPage /></RoleGuard></ProtectedRoute>} />
-      <Route path="/store/:storeId" element={<ProtectedRoute><RoleGuard allowedRoles={['gm', 'corporate_admin']}><StoreDetailPage /></RoleGuard></ProtectedRoute>} />
-      <Route path="/reports" element={<ProtectedRoute><RoleGuard allowedRoles={['gm', 'corporate_admin', 'hr_admin']}><ReportsPage /></RoleGuard></ProtectedRoute>} />
-      <Route path="/content-admin" element={<ProtectedRoute><RoleGuard allowedRoles={['corporate_admin']}><ContentAdminPage /></RoleGuard></ProtectedRoute>} />
-      <Route path="/templates/new" element={<ProtectedRoute><RoleGuard allowedRoles={['corporate_admin', 'gm', 'hr_admin']}><CreateTemplatePage /></RoleGuard></ProtectedRoute>} />
-      <Route path="/templates/:templateId/edit" element={<ProtectedRoute><RoleGuard allowedRoles={['corporate_admin', 'gm', 'hr_admin']}><TemplateEditorPage /></RoleGuard></ProtectedRoute>} />
-      <Route path="/invite" element={<ProtectedRoute><RoleGuard allowedRoles={['sales_manager', 'gm', 'hr_admin', 'corporate_admin']}><InvitePage /></RoleGuard></ProtectedRoute>} />
-      <Route path="/users" element={<ProtectedRoute><RoleGuard allowedRoles={['sales_manager', 'gm', 'hr_admin', 'corporate_admin']}><UsersPage /></RoleGuard></ProtectedRoute>} />
-      <Route path="/builder/new" element={<ProtectedRoute><RoleGuard allowedRoles={['corporate_admin', 'gm', 'hr_admin']}><BuilderStartPage /></RoleGuard></ProtectedRoute>} />
-      <Route path="/builder/:sessionId/review" element={<ProtectedRoute><RoleGuard allowedRoles={['corporate_admin', 'gm', 'hr_admin']}><BuilderReviewPage /></RoleGuard></ProtectedRoute>} />
-      <Route path="/builder/:sessionId" element={<ProtectedRoute><RoleGuard allowedRoles={['corporate_admin', 'gm', 'hr_admin']}><BuilderPage /></RoleGuard></ProtectedRoute>} />
+      <Route path="/team" element={<ProtectedRoute><RoleGuard allowedRoles={['manager', 'app_admin']}><ManagerDashboardPage /></RoleGuard></ProtectedRoute>} />
+      <Route path="/reviews" element={<ProtectedRoute><RoleGuard allowedRoles={['manager', 'location_admin', 'app_admin']}><ReviewsListPage /></RoleGuard></ProtectedRoute>} />
+      <Route path="/stores" element={<ProtectedRoute><RoleGuard allowedRoles={['location_admin', 'app_admin']}><GMOverviewPage /></RoleGuard></ProtectedRoute>} />
+      <Route path="/store/:storeId" element={<ProtectedRoute><RoleGuard allowedRoles={['location_admin', 'app_admin']}><StoreDetailPage /></RoleGuard></ProtectedRoute>} />
+      <Route path="/reports" element={<ProtectedRoute><RoleGuard allowedRoles={['location_admin', 'app_admin']}><ReportsPage /></RoleGuard></ProtectedRoute>} />
+      <Route path="/content-admin" element={<ProtectedRoute><RoleGuard allowedRoles={['app_admin']}><ContentAdminPage /></RoleGuard></ProtectedRoute>} />
+      <Route path="/templates/new" element={<ProtectedRoute><RoleGuard allowedRoles={['app_admin', 'location_admin']}><CreateTemplatePage /></RoleGuard></ProtectedRoute>} />
+      <Route path="/templates/:templateId/edit" element={<ProtectedRoute><RoleGuard allowedRoles={['app_admin', 'location_admin']}><TemplateEditorPage /></RoleGuard></ProtectedRoute>} />
+      <Route path="/invite" element={<ProtectedRoute><RoleGuard allowedRoles={['manager', 'location_admin', 'app_admin']}><InvitePage /></RoleGuard></ProtectedRoute>} />
+      <Route path="/users" element={<ProtectedRoute><RoleGuard allowedRoles={['manager', 'location_admin', 'app_admin']}><UsersPage /></RoleGuard></ProtectedRoute>} />
+      <Route path="/builder/new" element={<ProtectedRoute><RoleGuard allowedRoles={['app_admin', 'location_admin']}><BuilderStartPage /></RoleGuard></ProtectedRoute>} />
+      <Route path="/builder/:sessionId/review" element={<ProtectedRoute><RoleGuard allowedRoles={['app_admin', 'location_admin']}><BuilderReviewPage /></RoleGuard></ProtectedRoute>} />
+      <Route path="/builder/:sessionId" element={<ProtectedRoute><RoleGuard allowedRoles={['app_admin', 'location_admin']}><BuilderPage /></RoleGuard></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

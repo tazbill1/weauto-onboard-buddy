@@ -231,7 +231,7 @@ export default function BuilderReviewPage() {
           department_id: department.id,
           total_days: draft.total_days,
           created_by: profile.user_id,
-          is_master: profile.role === "corporate_admin",
+          is_master: profile.role === "app_admin",
           store_id: profile.store_id || null,
           status: "published",
           published_at: new Date().toISOString(),

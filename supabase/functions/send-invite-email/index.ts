@@ -15,6 +15,10 @@ interface InviteEmailPayload {
 }
 
 const roleLabels: Record<string, string> = {
+  app_admin: "App Admin",
+  location_admin: "Location Admin",
+  manager: "Manager",
+  user: "Associate",
   associate: "Associate",
   sales_manager: "Sales Manager",
   gm: "General Manager",
@@ -66,7 +70,7 @@ Deno.serve(async (req) => {
       .eq("user_id", userId)
       .single();
 
-    if (!profile || !["sales_manager", "gm", "hr_admin", "corporate_admin"].includes(profile.role)) {
+    if (!profile || !["manager", "location_admin", "app_admin", "sales_manager", "gm", "hr_admin", "corporate_admin"].includes(profile.role)) {
       return new Response(
         JSON.stringify({ error: "Forbidden" }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }

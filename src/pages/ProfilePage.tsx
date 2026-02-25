@@ -6,21 +6,15 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { LogOut, Mail, Info, UserPlus } from "lucide-react";
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-
-const roleLabels: Record<string, string> = {
-  associate: "Associate",
-  sales_manager: "Sales Manager",
-  gm: "General Manager",
-  hr_admin: "HR Admin",
-  corporate_admin: "Corporate Admin",
-};
+import { roleLabels } from "@/lib/roles";
+import { isManagerOrAbove } from "@/lib/roles";
 
 const APP_VERSION = "1.0.0";
 
 export default function ProfilePage() {
   const { profile, signOut } = useAuth();
   const navigate = useNavigate();
-  const canInvite = profile?.role && ["sales_manager", "gm", "hr_admin", "corporate_admin"].includes(profile.role);
+  const canInvite = isManagerOrAbove(profile?.role);
 
   useEffect(() => { document.title = "Profile — WEAuto Onboarding"; }, []);
 
@@ -41,7 +35,7 @@ export default function ProfilePage() {
             </AvatarFallback>
           </Avatar>
           <h1 className="text-xl font-bold text-foreground">{profile?.full_name || "User"}</h1>
-          <span className="text-sm text-muted-foreground">{roleLabels[profile?.role || "associate"]}</span>
+          <span className="text-sm text-muted-foreground">{roleLabels[profile?.role || "user"]}</span>
         </div>
 
         <Card className="p-4 space-y-3">
