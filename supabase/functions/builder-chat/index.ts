@@ -20,7 +20,41 @@ Deno.serve(async (req) => {
       );
     }
 
-    const { messages, department, extractedTopics, mode, programName } = await req.json();
+    const body = await req.json();
+    const { department, extractedTopics, mode, programName } = body;
+    let rawMessages = body.messages;
+
+    // --- Input validation & sanitization ---
+    if (!Array.isArray(rawMessages)) {
+      rawMessages = [];
+    }
+    if (rawMessages.length > 100) {
+      return new Response(
+        JSON.stringify({ error: "Too many messages" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    const MAX_CONTENT_LENGTH = 10000;
+    const sanitizedMessages = rawMessages
+      .filter(
+        (m: any) =>
+          m &&
+          typeof m === "object" &&
+          ["user", "assistant"].includes(m.role) &&
+          typeof m.content === "string" &&
+          m.content.length > 0
+      )
+      .map((m: any) => ({
+        role: m.role as "user" | "assistant",
+        content: m.content.substring(0, MAX_CONTENT_LENGTH),
+      }));
+
+    if (!["generate", "refine", undefined, null, ""].includes(mode)) {
+      return new Response(
+        JSON.stringify({ error: "Invalid mode" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     const departmentContext = department
       ? `The user is building an onboarding program for the "${department.label}" department at an automotive dealership. ${department.description || ""}. Typical program duration for this department is ${department.typical_duration_days || "flexible"} days.`
@@ -115,13 +149,10 @@ When extracting topics from user messages, identify:
 After acknowledging each input, end with a question like "What else should we include?" or "Anything else, or are you ready for me to build the program?"`;
     }
 
-    // Convert messages to OpenAI format
+    // Convert messages to OpenAI format (already sanitized above)
     const openaiMessages = [
-      { role: "system", content: systemPrompt },
-      ...(messages || []).map((m: any) => ({
-        role: m.role,
-        content: m.content,
-      })),
+      { role: "system" as const, content: systemPrompt },
+      ...sanitizedMessages,
     ];
 
     // Use flash for speed - pro times out on large programs
