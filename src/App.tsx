@@ -29,6 +29,7 @@ import ReportsPage from "./pages/ReportsPage";
 import HRAdminPage from "./pages/HRAdminPage";
 import InvitePage from "./pages/InvitePage";
 import UsersPage from "./pages/UsersPage";
+import LocationsPage from "./pages/LocationsPage";
 import ChangePasswordPage from "./pages/ChangePasswordPage";
 import BuilderStartPage from "./pages/BuilderStartPage";
 import BuilderPage from "./pages/BuilderPage";
@@ -80,6 +81,7 @@ function AppRoutes() {
       <Route path="/templates/:templateId/edit" element={<ProtectedRoute><RoleGuard allowedRoles={['app_admin', 'location_admin']}><TemplateEditorPage /></RoleGuard></ProtectedRoute>} />
       <Route path="/invite" element={<ProtectedRoute><RoleGuard allowedRoles={['manager', 'location_admin', 'app_admin']}><InvitePage /></RoleGuard></ProtectedRoute>} />
       <Route path="/users" element={<ProtectedRoute><RoleGuard allowedRoles={['manager', 'location_admin', 'app_admin']}><UsersPage /></RoleGuard></ProtectedRoute>} />
+      <Route path="/locations" element={<ProtectedRoute><RoleGuard allowedRoles={['app_admin']}><LocationsPage /></RoleGuard></ProtectedRoute>} />
       <Route path="/builder/new" element={<ProtectedRoute><RoleGuard allowedRoles={['app_admin', 'location_admin']}><BuilderStartPage /></RoleGuard></ProtectedRoute>} />
       <Route path="/builder/:sessionId/review" element={<ProtectedRoute><RoleGuard allowedRoles={['app_admin', 'location_admin']}><BuilderReviewPage /></RoleGuard></ProtectedRoute>} />
       <Route path="/builder/:sessionId" element={<ProtectedRoute><RoleGuard allowedRoles={['app_admin', 'location_admin']}><BuilderPage /></RoleGuard></ProtectedRoute>} />
