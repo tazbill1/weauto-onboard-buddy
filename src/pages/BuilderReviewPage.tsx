@@ -92,7 +92,13 @@ export default function BuilderReviewPage() {
         return;
       }
       setSessionData(data);
-      setDraft((data as any).draft_program as DraftProgram);
+      const draftData = (data as any).draft_program as DraftProgram;
+      if (!draftData) {
+        toast({ title: "No draft found", description: "Returning to chat to generate one.", variant: "destructive" });
+        navigate(`/builder/${sessionId}`);
+        return;
+      }
+      setDraft(draftData);
       setLoading(false);
     };
     load();
