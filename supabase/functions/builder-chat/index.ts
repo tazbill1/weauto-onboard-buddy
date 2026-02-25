@@ -84,6 +84,8 @@ Rules for generation:
 - Keep content_html brief but useful (2-3 paragraphs)
 - Add 2-3 suggestions for topics not covered
 - Respond with ONLY the JSON object, nothing else`;
+    } else if (mode === "refine") {
+      systemPrompt = `You are an expert automotive dealership training program designer. ${departmentContext}
 
 ${topicsContext}
 

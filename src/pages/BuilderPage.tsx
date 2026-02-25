@@ -265,34 +265,47 @@ export default function BuilderPage() {
 
       {/* Chat Area */}
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
-        {session?.messages.map((msg, i) => (
-          <div
-            key={i}
-            className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-          >
-            <div
-              className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm ${msg.role === "user"
-                ? "bg-primary text-primary-foreground"
-                : "bg-muted text-foreground"
-                }`}
-            >
-              {msg.attachment && (
-                <div className="text-xs opacity-70 mb-1">📎 {msg.attachment}</div>
-              )}
-              {msg.role === "assistant" ? (
-                <div className="prose prose-sm max-w-none dark:prose-invert [&_p]:mb-2 [&_p:last-child]:mb-0">
-                  <ReactMarkdown>{msg.content}</ReactMarkdown>
+        {session?.messages.map((msg, i) => {
+          // Hide raw JSON responses (generated program drafts)
+          const isJsonResponse = msg.role === "assistant" && msg.content.trimStart().startsWith("{") && msg.content.includes('"days"');
+          if (isJsonResponse) {
+            return (
+              <div key={i} className="flex justify-start">
+                <div className="bg-muted rounded-2xl px-4 py-3 text-sm text-muted-foreground italic">
+                  ✅ Program draft generated successfully.
                 </div>
-              ) : (
-                <p className="whitespace-pre-wrap">
-                  {msg.attachment
-                    ? msg.content.split("\n\n").slice(0, 1).join("") || `Uploaded ${msg.attachment}`
-                    : msg.content}
-                </p>
-              )}
+              </div>
+            );
+          }
+          return (
+            <div
+              key={i}
+              className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+            >
+              <div
+                className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm ${msg.role === "user"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-foreground"
+                  }`}
+              >
+                {msg.attachment && (
+                  <div className="text-xs opacity-70 mb-1">📎 {msg.attachment}</div>
+                )}
+                {msg.role === "assistant" ? (
+                  <div className="prose prose-sm max-w-none dark:prose-invert [&_p]:mb-2 [&_p:last-child]:mb-0">
+                    <ReactMarkdown>{msg.content}</ReactMarkdown>
+                  </div>
+                ) : (
+                  <p className="whitespace-pre-wrap">
+                    {msg.attachment
+                      ? msg.content.split("\n\n").slice(0, 1).join("") || `Uploaded ${msg.attachment}`
+                      : msg.content}
+                  </p>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
 
         {sending && (
           <div className="flex justify-start">
