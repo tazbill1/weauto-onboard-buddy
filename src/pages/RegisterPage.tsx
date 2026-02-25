@@ -9,13 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { AlertTriangle, CheckCircle2, XCircle } from "lucide-react";
 import { format } from "date-fns";
 
-const roleLabels: Record<string, string> = {
-  associate: "Associate",
-  sales_manager: "Sales Manager",
-  gm: "General Manager",
-  hr_admin: "HR Admin",
-  corporate_admin: "Corporate Admin",
-};
+import { roleLabels } from "@/lib/roles";
 
 interface InviteData {
   email: string;
@@ -115,7 +109,7 @@ export default function RegisterPage() {
       .eq("token", inviteToken);
 
     // Auto-create onboarding program if applicable — only if department has content
-    if (authData.user && invite.auto_start_onboarding && invite.role === "associate" && invite.assigned_manager_id) {
+    if (authData.user && invite.auto_start_onboarding && (invite.role === "user" || invite.role === "associate") && invite.assigned_manager_id) {
       let hasDays = false;
       if (invite.department_id) {
         const { data: deptDays } = await supabase

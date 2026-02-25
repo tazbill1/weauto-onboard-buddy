@@ -28,21 +28,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Users, Search, UserCheck, UserX, KeyRound } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
-const roleLabels: Record<string, string> = {
-  associate: "Associate",
-  sales_manager: "Sales Manager",
-  gm: "General Manager",
-  hr_admin: "HR Admin",
-  corporate_admin: "Corporate Admin",
-};
-
-const roleColors: Record<string, string> = {
-  associate: "secondary",
-  sales_manager: "default",
-  gm: "default",
-  hr_admin: "outline",
-  corporate_admin: "outline",
-};
+import { roleLabels, roleColors } from "@/lib/roles";
 
 export default function UsersPage() {
   const { profile } = useAuth();
@@ -61,9 +47,9 @@ export default function UsersPage() {
   const [newPassword, setNewPassword] = useState("");
   const [resetting, setResetting] = useState(false);
 
-  const isCorporateAdmin = profile?.role === "corporate_admin";
-  const isHRAdmin = profile?.role === "hr_admin";
-  const isGM = profile?.role === "gm";
+  const isCorporateAdmin = profile?.role === "app_admin";
+  const isLocationAdmin = profile?.role === "location_admin";
+  const isGM = false; // merged into location_admin
 
   const { data: stores } = useQuery({
     queryKey: ["stores-active"],
@@ -155,10 +141,10 @@ export default function UsersPage() {
   };
 
   const availableRoles = isCorporateAdmin
-    ? Object.keys(roleLabels)
-    : isGM
-    ? ["associate", "sales_manager", "gm"]
-    : ["associate", "sales_manager"];
+    ? ["user", "manager", "location_admin", "app_admin"]
+    : isLocationAdmin
+    ? ["user", "manager", "location_admin"]
+    : ["user", "manager"];
 
   return (
     <AppShell>

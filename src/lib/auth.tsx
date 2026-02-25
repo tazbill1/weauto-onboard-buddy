@@ -1,8 +1,8 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { normalizeRole } from "@/lib/roles";
+import type { AppRole } from "@/lib/roles";
 import type { User, Session } from "@supabase/supabase-js";
-
-type AppRole = "associate" | "sales_manager" | "gm" | "hr_admin" | "corporate_admin";
 
 interface Profile {
   id: string;
@@ -46,7 +46,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .select("*")
       .eq("user_id", userId)
       .single();
-    setProfile(data as Profile | null);
+    if (data) {
+      // Normalize the role from DB to the canonical new role
+      setProfile({ ...data, role: normalizeRole(data.role) } as Profile);
+    } else {
+      setProfile(null);
+    }
   };
 
   useEffect(() => {
@@ -61,8 +66,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setTimeout(() => fetchProfile(session.user.id), 0);
         } else {
           setProfile(null);
-          // If user had a session and it ended unexpectedly (not a manual sign-out),
-          // redirect to login so they're not stuck on a broken screen
           if (wasAuthenticated && event === "SIGNED_OUT") {
             wasAuthenticated = false;
             window.location.href = "/login";
@@ -86,7 +89,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signOut = async () => {
-    // Clear profile first so the SIGNED_OUT event doesn't trigger the expiry redirect
     setProfile(null);
     await supabase.auth.signOut();
   };

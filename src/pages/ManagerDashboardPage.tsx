@@ -276,7 +276,7 @@ function PendingReviewItem({ upload, profile, task }: { upload: any; profile: an
 export default function ManagerDashboardPage() {
   const { profile } = useAuth();
   const queryClient = useQueryClient();
-  const isManager = profile?.role === "sales_manager";
+  const isManager = profile?.role === "manager";
   const { data: managedPrograms, isLoading: managedLoading } = useManagedPrograms();
   const { data: allPrograms, isLoading: allLoading } = useAllActivePrograms();
   const { data: days } = useDays();

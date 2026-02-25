@@ -32,7 +32,7 @@ export default function HomePage() {
   const { profile } = useAuth();
   const navigate = useNavigate();
   const firstName = profile?.full_name?.split(" ")[0] || "there";
-  const isAssociate = profile?.role === "associate";
+  const isAssociate = profile?.role === "user";
   const { show: showOnboarding, dismiss: dismissOnboarding } = useShowOnboarding();
 
   const { data: program } = useMyProgram();
@@ -83,11 +83,10 @@ export default function HomePage() {
 
   const completionMap = new Map(completions?.map((c) => [c.task_id, c]));
 
-  // Role-specific home pages
-  if (profile?.role === "gm") return <GMOverviewPage />;
-  if (profile?.role === "corporate_admin") return <CorporateDashboardPage />;
-  if (profile?.role === "hr_admin") return <HRAdminPage />;
-  if (profile?.role === "sales_manager") return <ManagerDashboardPage />;
+  // Role-specific home pages (using new normalized roles)
+  if (profile?.role === "location_admin") return <GMOverviewPage />;
+  if (profile?.role === "app_admin") return <CorporateDashboardPage />;
+  if (profile?.role === "manager") return <ManagerDashboardPage />;
 
   // Show onboarding flow for first-time associates
   if (isAssociate && showOnboarding) {

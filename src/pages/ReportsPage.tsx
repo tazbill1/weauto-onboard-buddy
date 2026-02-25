@@ -72,7 +72,7 @@ export default function ReportsPage() {
   // Filter stores visible to this user
   const visibleStores = useMemo(() => {
     if (!stores) return [];
-    if (profile?.role === "gm") return stores.filter((s) => s.id === profile.store_id);
+    if (profile?.role === "location_admin") return stores.filter((s) => s.id === profile.store_id);
     return stores;
   }, [stores, profile]);
 
@@ -81,7 +81,7 @@ export default function ReportsPage() {
     let fp = programs;
     if (storeFilter !== "all") fp = fp.filter((p) => p.store_id === storeFilter);
     if (deptFilter !== "all") fp = fp.filter((p) => p.department_id === deptFilter);
-    if (profile?.role === "gm" && profile.store_id) fp = fp.filter((p) => p.store_id === profile.store_id);
+    if (profile?.role === "location_admin" && profile.store_id) fp = fp.filter((p) => p.store_id === profile.store_id);
     return fp;
   }, [programs, storeFilter, deptFilter, profile]);
 
@@ -190,7 +190,7 @@ export default function ReportsPage() {
   // Manager Activity Report
   const managerRows = useMemo(() => {
     if (!profiles || !programs || !signoffs) return [];
-    const managers = profiles.filter((p) => ["sales_manager", "gm"].includes(p.role));
+    const managers = profiles.filter((p) => ["manager", "location_admin"].includes(p.role));
     return managers.map((mgr) => {
       const store = storeMap.get(mgr.store_id || "");
       const mgrPrograms = (programs || []).filter((p) => p.manager_id === mgr.user_id && p.status === "active");
