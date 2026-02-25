@@ -71,6 +71,7 @@ const phaseOptions = [
 ];
 
 export default function TemplateEditorPage() {
+  useEffect(() => { document.title = "Edit Template — WEAuto"; }, []);
   const { templateId } = useParams<{ templateId: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();

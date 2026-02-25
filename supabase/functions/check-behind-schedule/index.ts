@@ -34,8 +34,6 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // This function should only be called by cron/scheduler.
-    // Validate via Authorization header matching the anon key (from cron) or service role key.
     const authHeader = req.headers.get("Authorization");
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY") || "";
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
@@ -53,10 +51,10 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Get all active programs
+    // Get all active programs with their department info
     const { data: programs, error: progError } = await supabase
       .from("onboarding_programs")
-      .select("*")
+      .select("*, departments!inner(typical_duration_days)")
       .eq("status", "active");
 
     if (progError) throw progError;
@@ -87,8 +85,12 @@ Deno.serve(async (req) => {
     let sentCount = 0;
 
     for (const program of programs) {
+      const totalDays = program.departments?.typical_duration_days;
+      // Skip programs where the department has no configured duration (no content)
+      if (!totalDays) continue;
+
       const businessDays = getBusinessDaysBetween(program.start_date, today);
-      const expectedDay = Math.min(businessDays + 1, 20);
+      const expectedDay = Math.min(businessDays + 1, totalDays);
 
       if (program.current_day >= expectedDay) continue;
 

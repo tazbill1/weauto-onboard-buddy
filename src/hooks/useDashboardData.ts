@@ -1,6 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/lib/auth";
 import type {
   OnboardingProgram,
   PerformanceRating,
@@ -97,7 +96,8 @@ export function useAllProfiles() {
 
 export function getAssociateStatusFromData(
   program: OnboardingProgram,
-  ratings: PerformanceRating[]
+  ratings: PerformanceRating[],
+  totalDays?: number
 ): "on_track" | "behind" | "needs_attention" {
   const programRatings = ratings.filter((r) => r.program_id === program.id);
   const hasIssues = programRatings.some(
@@ -105,10 +105,11 @@ export function getAssociateStatusFromData(
   );
   if (hasIssues) return "needs_attention";
 
+  const maxDays = totalDays || 20;
   const startDate = new Date(program.start_date);
   const today = new Date();
   const businessDays = countBusinessDays(startDate, today);
-  const expectedDay = Math.min(businessDays + 1, 20);
+  const expectedDay = Math.min(businessDays + 1, maxDays);
   if (program.current_day < expectedDay) return "behind";
   return "on_track";
 }

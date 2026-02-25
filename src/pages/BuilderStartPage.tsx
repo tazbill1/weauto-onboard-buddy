@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { AppShell } from "@/components/AppShell";
 import { useAuth } from "@/lib/auth";
@@ -23,6 +23,7 @@ const deptIcons: Record<string, typeof TrendingUp> = {
 };
 
 export default function BuilderStartPage() {
+  useEffect(() => { document.title = "Build a Program — WEAuto"; }, []);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { profile } = useAuth();

@@ -133,6 +133,19 @@ export function useDepartment(departmentId: string | undefined) {
   });
 }
 
+/** Fetches all departments and returns a Map<id, Department> for easy lookup */
+export function useDepartmentMap() {
+  const { data: departments } = useDepartments();
+  const map = new Map<string, Department>();
+  departments?.forEach((d) => map.set(d.id, d));
+  return map;
+}
+
+/** Get the total days for a department – uses typical_duration_days or falls back to dayCount */
+export function getDepartmentTotalDays(dept: Department | undefined, dayCount?: number): number {
+  return dept?.typical_duration_days || dayCount || 20;
+}
+
 // ── Queries ──
 
 export function useDays(departmentId?: string) {
@@ -269,7 +282,6 @@ export function useManagedPrograms() {
     queryKey: ["managed-programs", user?.id, profile?.role, profile?.store_id],
     enabled: !!user?.id && !!profile,
     queryFn: async () => {
-      // Sales managers see only their directly assigned associates
       if (profile!.role === 'sales_manager') {
         const { data, error } = await supabase
           .from("onboarding_programs" as any)
@@ -280,7 +292,6 @@ export function useManagedPrograms() {
         return data as unknown as OnboardingProgram[];
       }
 
-      // GMs see all active programs at their store
       if (profile!.role === 'gm') {
         const { data, error } = await supabase
           .from("onboarding_programs" as any)
@@ -291,7 +302,6 @@ export function useManagedPrograms() {
         return data as unknown as OnboardingProgram[];
       }
 
-      // Corporate admins see all active programs
       const { data, error } = await supabase
         .from("onboarding_programs" as any)
         .select("*")
@@ -400,8 +410,8 @@ export function useSignOffDay() {
       dayNumber: number;
       managerId: string;
       overallNotes: string | null;
+      totalDays?: number;
     }) => {
-      // 1. Insert/update the sign-off record
       const { error } = await supabase
         .from("daily_signoffs" as any)
         .upsert(
@@ -416,9 +426,9 @@ export function useSignOffDay() {
         );
       if (error) throw error;
 
-      // 2. Auto-advance the associate's current_day if this is the latest signed-off day
+      const maxDays = params.totalDays || 20;
       const nextDay = params.dayNumber + 1;
-      if (nextDay <= 20) {
+      if (nextDay <= maxDays) {
         const { error: advanceError } = await supabase
           .from("onboarding_programs")
           .update({ current_day: nextDay } as any)
@@ -459,7 +469,6 @@ export function usePendingUploads() {
     queryKey: ["pending-uploads", profile?.store_id, profile?.role],
     enabled: !!profile,
     queryFn: async () => {
-      // Corporate admins see all pending uploads across all stores
       if (profile!.role === 'corporate_admin') {
         const { data, error } = await supabase
           .from("uploads" as any)
@@ -470,7 +479,6 @@ export function usePendingUploads() {
         return data as unknown as UploadRecord[];
       }
 
-      // All other manager roles: filter by their store
       const { data: programs } = await supabase
         .from("onboarding_programs" as any)
         .select("id")
@@ -533,17 +541,19 @@ export function countBusinessDays(startDate: Date, endDate: Date): number {
 export function getAssociateStatus(
   program: OnboardingProgram,
   ratings: PerformanceRating[],
-  days: Day[]
+  days: Day[],
+  totalDays?: number
 ): "on_track" | "behind" | "needs_attention" {
   const hasIssues = ratings.some(
     (r) => r.rating === "needs_work" || r.rating === "not_attempted"
   );
   if (hasIssues) return "needs_attention";
 
+  const maxDays = totalDays || days.length || 20;
   const startDate = new Date(program.start_date);
   const today = new Date();
   const businessDays = countBusinessDays(startDate, today);
-  const expectedDay = Math.min(businessDays + 1, 20);
+  const expectedDay = Math.min(businessDays + 1, maxDays);
 
   if (program.current_day < expectedDay) return "behind";
   return "on_track";

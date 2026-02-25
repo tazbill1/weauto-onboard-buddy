@@ -31,6 +31,7 @@ interface SessionData {
 }
 
 export default function BuilderPage() {
+  useEffect(() => { document.title = "AI Builder — WEAuto"; }, []);
   const { sessionId } = useParams<{ sessionId: string }>();
   const navigate = useNavigate();
   const { profile } = useAuth();
