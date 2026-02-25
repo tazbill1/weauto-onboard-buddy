@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/lib/auth";
+import { useNavigate } from "react-router-dom";
 import { AppShell } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,13 +17,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useDepartments } from "@/hooks/useOnboardingData";
 import type { Department } from "@/hooks/useOnboardingData";
-import { Send, RotateCw, XCircle, UserPlus, Copy, CheckCheck, Link as LinkIcon, UserCog } from "lucide-react";
+import { Send, RotateCw, XCircle, UserPlus, Copy, CheckCheck, Link as LinkIcon, UserCog, AlertTriangle, Sparkles } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
 const roleLabels: Record<string, string> = {
@@ -47,6 +52,7 @@ function getAllowedRoles(myRole: AppRole): AppRole[] {
 
 export default function InvitePage() {
   const { profile } = useAuth();
+  const navigate = useNavigate();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -65,6 +71,10 @@ export default function InvitePage() {
   const [departmentId, setDepartmentId] = useState("");
   const [addDepartmentId, setAddDepartmentId] = useState("");
 
+  // Empty department warning modal
+  const [showEmptyDeptWarning, setShowEmptyDeptWarning] = useState(false);
+  const [pendingAction, setPendingAction] = useState<"send" | "add" | null>(null);
+
   // Add User tab state
   const [addEmail, setAddEmail] = useState("");
   const [addFullName, setAddFullName] = useState("");
@@ -80,6 +90,20 @@ export default function InvitePage() {
   const isCorporateAdmin = myRole === "corporate_admin";
 
   useEffect(() => { document.title = "Invite — WEAuto"; }, []);
+
+  // Check if a department has published days
+  const { data: deptDayCounts } = useQuery({
+    queryKey: ["dept-day-counts"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("days").select("department_id");
+      if (error) throw error;
+      const counts: Record<string, number> = {};
+      for (const row of data || []) {
+        counts[row.department_id] = (counts[row.department_id] || 0) + 1;
+      }
+      return counts;
+    },
+  });
 
   useEffect(() => {
     if (!isCorporateAdmin && profile?.store_id) {
@@ -157,7 +181,27 @@ export default function InvitePage() {
     },
   });
 
+  const checkDeptAndProceed = (action: "send" | "add", deptId: string) => {
+    const hasContent = (deptDayCounts?.[deptId] || 0) > 0;
+    if (!hasContent && (action === "send" ? role : addRole) === "associate") {
+      setPendingAction(action);
+      setShowEmptyDeptWarning(true);
+      return false;
+    }
+    return true;
+  };
+
+  const warningDeptId = pendingAction === "send" ? departmentId : addDepartmentId;
+  const warningDeptName = departments?.find((d) => d.id === warningDeptId)?.label || "this department";
+
   const handleSend = async () => {
+    if (!email || !storeId) return;
+    // Check department content for associates
+    if (role === "associate" && departmentId && !checkDeptAndProceed("send", departmentId)) return;
+    await doSend();
+  };
+
+  const doSend = async () => {
     if (!email || !storeId) return;
     setSending(true);
     setLastInviteLink(null);
@@ -215,6 +259,13 @@ export default function InvitePage() {
       toast({ title: "Password too short", description: "Password must be at least 6 characters.", variant: "destructive" });
       return;
     }
+    // Check department content for associates
+    if (addRole === "associate" && addDepartmentId && !checkDeptAndProceed("add", addDepartmentId)) return;
+    await doAddUser();
+  };
+
+  const doAddUser = async () => {
+    if (!addEmail || !addPassword || !addStoreId) return;
     setAddLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke("create-user", {
@@ -369,8 +420,10 @@ export default function InvitePage() {
                       {departments?.map((d) => <SelectItem key={d.id} value={d.id}>{d.label}</SelectItem>)}
                     </SelectContent>
                   </Select>
-                  {departments?.find((d) => d.id === addDepartmentId)?.typical_duration_days === null && (
-                    <p className="text-xs text-warning">This department's program is still being built.</p>
+                  {addDepartmentId && (deptDayCounts?.[addDepartmentId] || 0) === 0 && (
+                    <p className="text-xs text-warning flex items-center gap-1">
+                      <AlertTriangle className="h-3 w-3" /> No training program exists for this department yet.
+                    </p>
                   )}
                 </div>
               )}
@@ -444,8 +497,10 @@ export default function InvitePage() {
                       {departments?.map((d) => <SelectItem key={d.id} value={d.id}>{d.label}</SelectItem>)}
                     </SelectContent>
                   </Select>
-                  {departments?.find((d) => d.id === departmentId)?.typical_duration_days === null && (
-                    <p className="text-xs text-warning">This department's program is still being built.</p>
+                  {departmentId && (deptDayCounts?.[departmentId] || 0) === 0 && (
+                    <p className="text-xs text-warning flex items-center gap-1">
+                      <AlertTriangle className="h-3 w-3" /> No training program exists for this department yet.
+                    </p>
                   )}
                 </div>
               )}
@@ -536,6 +591,46 @@ export default function InvitePage() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Empty Department Warning Modal */}
+      <AlertDialog open={showEmptyDeptWarning} onOpenChange={setShowEmptyDeptWarning}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-warning" />
+              No Training Program Yet
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              No training program has been created for <strong>{warningDeptName}</strong> yet.
+              The associate will see a placeholder when they log in. Would you like to build a program first?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setShowEmptyDeptWarning(false);
+                if (pendingAction === "send") doSend();
+                else if (pendingAction === "add") doAddUser();
+                setPendingAction(null);
+              }}
+              className="bg-muted text-foreground hover:bg-muted/80"
+            >
+              Send Invite Anyway
+            </AlertDialogAction>
+            <AlertDialogAction
+              onClick={() => {
+                setShowEmptyDeptWarning(false);
+                setPendingAction(null);
+                navigate(`/builder/new?department=${warningDeptId}`);
+              }}
+              className="gap-1"
+            >
+              <Sparkles className="h-4 w-4" /> Build Program Now
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppShell>
   );
 }

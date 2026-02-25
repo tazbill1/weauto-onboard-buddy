@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   ArrowLeft, ChevronDown, ChevronRight, Pencil, Trash2, Plus, Sparkles,
-  Send, Loader2, BookOpen, Dumbbell, Briefcase, UserCheck, Rocket,
+  Send, Loader2, BookOpen, Dumbbell, Briefcase, UserCheck, Rocket, AlertTriangle,
 } from "lucide-react";
 import { RichTextEditor } from "@/components/RichTextEditor";
 import { getSectionLabel } from "@/hooks/useOnboardingData";
@@ -94,9 +94,9 @@ export default function BuilderReviewPage() {
       }
       setSessionData(data);
       const draftData = (data as any).draft_program as DraftProgram;
-      if (!draftData) {
-        toast({ title: "No draft found", description: "Returning to chat to generate one.", variant: "destructive" });
-        navigate(`/builder/${sessionId}`);
+      if (!draftData || !draftData.days || !Array.isArray(draftData.days)) {
+        setLoading(false);
+        setDraft(null);
         return;
       }
       setDraft(draftData);
@@ -335,10 +335,25 @@ export default function BuilderReviewPage() {
     }
   };
 
-  if (loading || !draft) {
+  if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center text-muted-foreground">
         Loading…
+      </div>
+    );
+  }
+
+  if (!draft) {
+    return (
+      <div className="flex flex-col min-h-screen items-center justify-center gap-4 px-6 text-center">
+        <AlertTriangle className="h-12 w-12 text-warning" />
+        <h1 className="text-xl font-bold text-foreground">Could not load the program draft</h1>
+        <p className="text-sm text-muted-foreground max-w-md">
+          The draft may be malformed or missing. Go back to the chat and try generating again.
+        </p>
+        <Button variant="outline" onClick={() => navigate(`/builder/${sessionId}`)} className="gap-2">
+          <ArrowLeft className="h-4 w-4" /> Back to Chat
+        </Button>
       </div>
     );
   }

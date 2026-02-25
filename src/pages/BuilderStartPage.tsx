@@ -78,6 +78,13 @@ export default function BuilderStartPage() {
             <div className="grid grid-cols-2 gap-3">
               {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-24 rounded-xl" />)}
             </div>
+          ) : !departments || departments.length === 0 ? (
+            <Card className="p-6 text-center space-y-3">
+              <p className="text-sm text-muted-foreground">Failed to load departments.</p>
+              <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
+                Retry
+              </Button>
+            </Card>
           ) : (
             <div className="grid grid-cols-2 gap-3">
               {departments?.filter(d => d.is_active).map((dept) => {

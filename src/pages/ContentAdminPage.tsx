@@ -29,13 +29,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import {
   Pencil, Copy, Eye, Camera, Clock, BookOpen, Dumbbell, Briefcase, UserCheck, Save,
-  MoreVertical, Plus, Sparkles, FileText, Rocket, Archive, Users,
+  MoreVertical, Plus, Sparkles, FileText, Rocket, Archive, Users, Trash2, ExternalLink,
+  MessageSquare, CheckCircle2, XCircle, Loader2,
 } from "lucide-react";
 import { RichTextEditor } from "@/components/RichTextEditor";
+import { formatDistanceToNow } from "date-fns";
 
 interface Store {
   id: string;
@@ -51,6 +54,14 @@ const sectionIcons: Record<string, typeof BookOpen> = {
 };
 
 const sectionOrder = ["learn", "practice", "mastery_homework", "manager_checkin"];
+
+const sessionStatusConfig: Record<string, { label: string; className: string; icon: typeof Sparkles }> = {
+  active: { label: "Active", className: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300", icon: MessageSquare },
+  generating: { label: "Generating…", className: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 animate-pulse", icon: Loader2 },
+  reviewing: { label: "Review Draft", className: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300", icon: Eye },
+  completed: { label: "Published", className: "bg-muted text-muted-foreground", icon: CheckCircle2 },
+  abandoned: { label: "Abandoned", className: "bg-muted text-muted-foreground", icon: XCircle },
+};
 
 export default function ContentAdminPage() {
   const { profile } = useAuth();
@@ -96,19 +107,18 @@ export default function ContentAdminPage() {
     },
   });
 
-  // Builder sessions
+  // Builder sessions — show all statuses including abandoned
   const { data: builderSessions } = useQuery({
     queryKey: ["builder-sessions", selectedDeptId, profile?.user_id],
     enabled: !!selectedDeptId && !!profile?.user_id,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("builder_sessions" as any)
-        .select("id, program_name, status, created_at, department_id")
+        .select("id, program_name, status, created_at, department_id, messages, template_id, updated_at")
         .eq("department_id", selectedDeptId)
         .eq("user_id", profile!.user_id)
-        .neq("status", "abandoned")
         .order("created_at", { ascending: false })
-        .limit(5);
+        .limit(10);
       if (error) throw error;
       return data as any[];
     },
@@ -255,6 +265,20 @@ export default function ContentAdminPage() {
       if (error) throw error;
       toast({ title: "Template duplicated", description: "Open the copy to edit it." });
       queryClient.invalidateQueries({ queryKey: ["templates"] });
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const handleDeleteSession = async (sessionId: string) => {
+    try {
+      const { error } = await supabase
+        .from("builder_sessions" as any)
+        .delete()
+        .eq("id", sessionId);
+      if (error) throw error;
+      toast({ title: "Session deleted" });
+      queryClient.invalidateQueries({ queryKey: ["builder-sessions"] });
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     }
@@ -421,32 +445,82 @@ export default function ContentAdminPage() {
           </Card>
         </div>
 
-        {/* Recent Builder Sessions */}
+        {/* Recent Builder Sessions — Enhanced */}
         {builderSessions && builderSessions.length > 0 && (
           <div className="space-y-2">
-            <h2 className="text-sm font-semibold text-foreground">Recent AI Builder Sessions</h2>
-            <div className="space-y-1">
-              {builderSessions.map((s: any) => (
-                <Card
-                  key={s.id}
-                  className="p-3 cursor-pointer hover:bg-muted/50 transition-colors"
-                  onClick={() =>
-                    navigate(
-                      s.status === "reviewing"
-                        ? `/builder/${s.id}/review`
-                        : `/builder/${s.id}`
-                    )
-                  }
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium truncate">{s.program_name || "Untitled Session"}</p>
-                      <p className="text-xs text-muted-foreground">{new Date(s.created_at).toLocaleDateString()}</p>
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-foreground">Recent AI Builder Sessions</h2>
+              <Button variant="outline" size="sm" className="gap-1" onClick={() => navigate(`/builder/new?department=${selectedDeptId}`)}>
+                <Sparkles className="h-3.5 w-3.5" /> New Session
+              </Button>
+            </div>
+            <div className="space-y-2">
+              {builderSessions.map((s: any) => {
+                const config = sessionStatusConfig[s.status] || sessionStatusConfig.active;
+                const Icon = config.icon;
+                const messageCount = Array.isArray(s.messages) ? s.messages.length : 0;
+                const isResumable = ["active", "generating", "reviewing"].includes(s.status);
+
+                return (
+                  <Card key={s.id} className="p-3">
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="text-sm font-medium truncate">{s.program_name || "Untitled Session"}</p>
+                          <Badge className={`text-[10px] gap-1 ${config.className}`}>
+                            <Icon className="h-3 w-3" />
+                            {config.label}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                          <span>{formatDistanceToNow(new Date(s.created_at), { addSuffix: true })}</span>
+                          {messageCount > 0 && <span>{messageCount} messages</span>}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        {isResumable && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="gap-1"
+                            onClick={() => navigate(
+                              s.status === "reviewing"
+                                ? `/builder/${s.id}/review`
+                                : `/builder/${s.id}`
+                            )}
+                          >
+                            Resume
+                          </Button>
+                        )}
+                        {s.status === "completed" && s.template_id && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="gap-1"
+                            onClick={() => navigate(`/templates/${s.template_id}/edit`)}
+                          >
+                            <ExternalLink className="h-3.5 w-3.5" /> Template
+                          </Button>
+                        )}
+                        {s.status === "abandoned" && (
+                          <ConfirmDialog
+                            title="Delete Session?"
+                            description="This will permanently delete this abandoned builder session."
+                            confirmLabel="Delete"
+                            confirmVariant="destructive"
+                            onConfirm={() => handleDeleteSession(s.id)}
+                            trigger={
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive/60 hover:text-destructive">
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            }
+                          />
+                        )}
+                      </div>
                     </div>
-                    <Badge variant="outline" className="text-[10px] shrink-0">{s.status}</Badge>
-                  </div>
-                </Card>
-              ))}
+                  </Card>
+                );
+              })}
             </div>
           </div>
         )}
@@ -475,12 +549,12 @@ export default function ContentAdminPage() {
                       <AccordionContent className="px-4 pb-4">
                         {sections.map(section => {
                           const sectionTasks = dayTasks.filter(t => t.section === section).sort((a, b) => a.sort_order - b.sort_order);
-                          const Icon = sectionIcons[section] || BookOpen;
+                          const SectionIcon = sectionIcons[section] || BookOpen;
 
                           return (
                             <div key={section} className="mb-4">
                               <div className="flex items-center gap-2 mb-2">
-                                <Icon className="h-4 w-4 text-secondary" />
+                                <SectionIcon className="h-4 w-4 text-secondary" />
                                 <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{getSectionLabel(section)}</span>
                               </div>
                               <div className="space-y-1">
