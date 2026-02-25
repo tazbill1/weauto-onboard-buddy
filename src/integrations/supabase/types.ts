@@ -241,6 +241,7 @@ export type Database = {
           auto_start_onboarding: boolean
           created_at: string
           department_id: string
+          department_ids: Json | null
           email: string
           expires_at: string
           id: string
@@ -256,6 +257,7 @@ export type Database = {
           auto_start_onboarding?: boolean
           created_at?: string
           department_id: string
+          department_ids?: Json | null
           email: string
           expires_at?: string
           id?: string
@@ -271,6 +273,7 @@ export type Database = {
           auto_start_onboarding?: boolean
           created_at?: string
           department_id?: string
+          department_ids?: Json | null
           email?: string
           expires_at?: string
           id?: string
@@ -293,6 +296,35 @@ export type Database = {
             columns: ["store_id"]
             isOneToOne: false
             referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      manager_departments: {
+        Row: {
+          created_at: string
+          department_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          department_id: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          department_id?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "manager_departments_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
             referencedColumns: ["id"]
           },
         ]
@@ -876,10 +908,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      get_user_role: {
-        Args: { _user_id: string }
-        Returns: Database["public"]["Enums"]["app_role"]
-      }
+      get_user_role: { Args: { _user_id: string }; Returns: string }
     }
     Enums: {
       app_role:
