@@ -123,6 +123,10 @@ After acknowledging each input, end with a question like "What else should we in
       })),
     ];
 
+    // Use a stronger model for generation to ensure proper JSON output
+    const selectedModel = mode === "generate" ? "google/gemini-2.5-pro" : "google/gemini-2.5-flash";
+    const maxTokens = mode === "generate" ? 16000 : 8000;
+
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -130,8 +134,8 @@ After acknowledging each input, end with a question like "What else should we in
         Authorization: `Bearer ${LOVABLE_API_KEY}`,
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        max_tokens: 8000,
+        model: selectedModel,
+        max_tokens: maxTokens,
         messages: openaiMessages,
       }),
     });

@@ -192,8 +192,11 @@ export default function BuilderPage() {
 
   const handleGenerate = async () => {
     if (!session || sending) return;
-    await updateSession({ status: "generating" });
-    await sendToAI(session.messages, "generate");
+    // Add a synthetic confirmation message so the AI knows to produce JSON
+    const confirmMsg: ChatMessage = { role: "user", content: "Yes, generate the complete onboarding program now." };
+    const updatedMsgs = [...session.messages, confirmMsg];
+    await updateSession({ status: "generating", messages: updatedMsgs as any });
+    await sendToAI(updatedMsgs, "generate");
   };
 
   const handleAbandon = async () => {
@@ -300,11 +303,19 @@ export default function BuilderPage() {
           </div>
         )}
 
-        {session?.status === "reviewing" && session.draft_program && (
-          <div className="flex justify-center py-4">
-            <Button onClick={() => navigate(`/builder/${sessionId}/review`)} className="gap-2">
-              <Sparkles className="h-4 w-4" /> View Draft Program
-            </Button>
+        {session?.status === "reviewing" && (
+          <div className="flex justify-center py-4 gap-3">
+            {session.draft_program ? (
+              <Button onClick={() => navigate(`/builder/${sessionId}/review`)} className="gap-2">
+                <Sparkles className="h-4 w-4" /> View Draft Program
+              </Button>
+            ) : (
+              <Button variant="outline" onClick={() => {
+                updateSession({ status: "active" });
+              }} className="gap-2">
+                <Sparkles className="h-4 w-4" /> Retry Generation
+              </Button>
+            )}
           </div>
         )}
 
