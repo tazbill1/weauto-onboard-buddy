@@ -14,6 +14,107 @@ export type Database = {
   }
   public: {
     Tables: {
+      builder_sessions: {
+        Row: {
+          created_at: string
+          department_id: string
+          draft_program: Json | null
+          extracted_topics: Json
+          id: string
+          messages: Json
+          program_name: string | null
+          status: string
+          template_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          department_id: string
+          draft_program?: Json | null
+          extracted_topics?: Json
+          id?: string
+          messages?: Json
+          program_name?: string | null
+          status?: string
+          template_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          department_id?: string
+          draft_program?: Json | null
+          extracted_topics?: Json
+          id?: string
+          messages?: Json
+          program_name?: string | null
+          status?: string
+          template_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "builder_sessions_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "builder_sessions_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "program_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      builder_uploads: {
+        Row: {
+          created_at: string
+          extracted_text: string | null
+          file_name: string
+          file_path: string
+          file_size: number | null
+          file_type: string
+          id: string
+          processed: boolean
+          session_id: string
+        }
+        Insert: {
+          created_at?: string
+          extracted_text?: string | null
+          file_name: string
+          file_path: string
+          file_size?: number | null
+          file_type: string
+          id?: string
+          processed?: boolean
+          session_id: string
+        }
+        Update: {
+          created_at?: string
+          extracted_text?: string | null
+          file_name?: string
+          file_path?: string
+          file_size?: number | null
+          file_type?: string
+          id?: string
+          processed?: boolean
+          session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "builder_uploads_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "builder_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       daily_signoffs: {
         Row: {
           day_number: number

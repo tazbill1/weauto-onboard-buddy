@@ -96,6 +96,24 @@ export default function ContentAdminPage() {
     },
   });
 
+  // Builder sessions
+  const { data: builderSessions } = useQuery({
+    queryKey: ["builder-sessions", selectedDeptId, profile?.user_id],
+    enabled: !!selectedDeptId && !!profile?.user_id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("builder_sessions" as any)
+        .select("id, program_name, status, created_at, department_id")
+        .eq("department_id", selectedDeptId)
+        .eq("user_id", profile!.user_id)
+        .neq("status", "abandoned")
+        .order("created_at", { ascending: false })
+        .limit(5);
+      if (error) throw error;
+      return data as any[];
+    },
+  });
+
   useEffect(() => {
     supabase.from("stores").select("id, store_name, brand").eq("is_active", true).order("store_name").then(({ data }) => {
       if (data) setStores(data as Store[]);
@@ -360,7 +378,7 @@ export default function ContentAdminPage() {
                 </Card>
               ))}
             </div>
-          ) : (
+          ) : !templatesLoading ? (
             <Card className="p-6 text-center space-y-3">
               <FileText className="h-10 w-10 mx-auto text-muted-foreground/50" />
               <p className="text-sm font-medium text-muted-foreground">
@@ -369,11 +387,11 @@ export default function ContentAdminPage() {
               <div className="flex items-center justify-center gap-2">
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button variant="outline" size="sm" disabled className="gap-1">
+                    <Button variant="outline" size="sm" className="gap-1" onClick={() => navigate(`/builder/new?department=${selectedDeptId}`)}>
                       <Sparkles className="h-3.5 w-3.5" /> Build with AI
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>Coming in next update</TooltipContent>
+                  <TooltipContent>Create a program using AI chat</TooltipContent>
                 </Tooltip>
                 <Button
                   size="sm"
@@ -384,7 +402,7 @@ export default function ContentAdminPage() {
                 </Button>
               </div>
             </Card>
-          )}
+          ) : null}
         </div>
 
         {/* Quick Stats */}
@@ -402,6 +420,36 @@ export default function ContentAdminPage() {
             <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Published</p>
           </Card>
         </div>
+
+        {/* Recent Builder Sessions */}
+        {builderSessions && builderSessions.length > 0 && (
+          <div className="space-y-2">
+            <h2 className="text-sm font-semibold text-foreground">Recent AI Builder Sessions</h2>
+            <div className="space-y-1">
+              {builderSessions.map((s: any) => (
+                <Card
+                  key={s.id}
+                  className="p-3 cursor-pointer hover:bg-muted/50 transition-colors"
+                  onClick={() =>
+                    navigate(
+                      s.status === "reviewing"
+                        ? `/builder/${s.id}/review`
+                        : `/builder/${s.id}`
+                    )
+                  }
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate">{s.program_name || "Untitled Session"}</p>
+                      <p className="text-xs text-muted-foreground">{new Date(s.created_at).toLocaleDateString()}</p>
+                    </div>
+                    <Badge variant="outline" className="text-[10px] shrink-0">{s.status}</Badge>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Legacy Content (existing day/task editing) */}
         {filteredDays.length > 0 && (
