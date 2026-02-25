@@ -11,6 +11,7 @@ import {
   useDays,
   useAllTasks,
   useAllActivePrograms,
+  useDepartments,
 } from "@/hooks/useOnboardingData";
 import {
   useAllCompletions,
@@ -21,6 +22,7 @@ import {
   calcProgress,
 } from "@/hooks/useDashboardData";
 import { Building2, Users, TrendingUp } from "lucide-react";
+import { DepartmentBadge } from "@/components/DepartmentBadge";
 import {
   ChartContainer,
   ChartTooltip,
@@ -41,6 +43,8 @@ export default function GMOverviewPage() {
   const { data: ratings } = useAllRatings();
   const { data: profiles } = useAllProfiles();
   const { data: stores } = useStores();
+  const { data: departments } = useDepartments();
+  const deptMap = new Map(departments?.map((d) => [d.id, d.label]));
 
   const storeId = profile?.store_id;
   const store = stores?.find((s) => s.id === storeId);
@@ -186,6 +190,7 @@ export default function GMOverviewPage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-semibold text-foreground truncate">{p?.full_name || "Unknown"}</span>
+                          {deptMap.get(program.department_id) && <DepartmentBadge label={deptMap.get(program.department_id)!} />}
                           <StatusBadge status={status} />
                         </div>
                         <p className="text-xs text-muted-foreground">Day {program.current_day} · {day?.title || ""}</p>

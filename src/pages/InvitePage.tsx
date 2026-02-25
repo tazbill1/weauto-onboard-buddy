@@ -20,6 +20,8 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useDepartments } from "@/hooks/useOnboardingData";
+import type { Department } from "@/hooks/useOnboardingData";
 import { Send, RotateCw, XCircle, UserPlus, Copy, CheckCheck, Link as LinkIcon, UserCog } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
@@ -58,6 +60,11 @@ export default function InvitePage() {
   const [lastInviteLink, setLastInviteLink] = useState<string | null>(null);
   const [linkCopied, setLinkCopied] = useState(false);
 
+  // Department state
+  const { data: departments } = useDepartments();
+  const [departmentId, setDepartmentId] = useState("");
+  const [addDepartmentId, setAddDepartmentId] = useState("");
+
   // Add User tab state
   const [addEmail, setAddEmail] = useState("");
   const [addFullName, setAddFullName] = useState("");
@@ -87,6 +94,17 @@ export default function InvitePage() {
       setAddManagerId(profile.user_id);
     }
   }, [myRole, profile]);
+
+  // Default department to Sales
+  useEffect(() => {
+    if (departments?.length && !departmentId) {
+      const salesDept = departments.find((d) => d.slug === "sales");
+      if (salesDept) {
+        setDepartmentId(salesDept.id);
+        setAddDepartmentId(salesDept.id);
+      }
+    }
+  }, [departments, departmentId]);
 
   const { data: stores } = useQuery({
     queryKey: ["stores-active"],
@@ -164,6 +182,7 @@ export default function InvitePage() {
         email, role, store_id: storeId, invited_by: profile?.user_id,
         assigned_manager_id: role === "associate" && managerId ? managerId : null,
         auto_start_onboarding: role === "associate" ? autoStart : false,
+        department_id: role === "associate" && departmentId ? departmentId : (departments?.find((d) => d.slug === "sales")?.id || null),
       } as any).select("token").single();
 
       if (error) throw error;
@@ -207,6 +226,7 @@ export default function InvitePage() {
           fullName: addFullName,
           managerId: addRole === "associate" ? addManagerId : null,
           autoStart: addRole === "associate" ? addAutoStart : false,
+          departmentId: addRole === "associate" ? addDepartmentId : null,
         },
       });
 
@@ -341,6 +361,21 @@ export default function InvitePage() {
               )}
 
               {addRole === "associate" && (
+                <div className="space-y-2">
+                  <Label>Department</Label>
+                  <Select value={addDepartmentId} onValueChange={setAddDepartmentId}>
+                    <SelectTrigger className="h-12"><SelectValue placeholder="Select department" /></SelectTrigger>
+                    <SelectContent>
+                      {departments?.map((d) => <SelectItem key={d.id} value={d.id}>{d.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  {departments?.find((d) => d.id === addDepartmentId)?.typical_duration_days === null && (
+                    <p className="text-xs text-warning">This department's program is still being built.</p>
+                  )}
+                </div>
+              )}
+
+              {addRole === "associate" && (
                 <div className="flex items-center justify-between py-2">
                   <div>
                     <Label className="text-sm">Auto-start onboarding</Label>
@@ -397,6 +432,21 @@ export default function InvitePage() {
                       {(!storeManagers || storeManagers.length === 0) && <SelectItem value="none" disabled>No managers at this store</SelectItem>}
                     </SelectContent>
                   </Select>
+                </div>
+              )}
+
+              {role === "associate" && (
+                <div className="space-y-2">
+                  <Label>Department</Label>
+                  <Select value={departmentId} onValueChange={setDepartmentId}>
+                    <SelectTrigger className="h-12"><SelectValue placeholder="Select department" /></SelectTrigger>
+                    <SelectContent>
+                      {departments?.map((d) => <SelectItem key={d.id} value={d.id}>{d.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  {departments?.find((d) => d.id === departmentId)?.typical_duration_days === null && (
+                    <p className="text-xs text-warning">This department's program is still being built.</p>
+                  )}
                 </div>
               )}
 

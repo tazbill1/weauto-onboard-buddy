@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { email, password, role, storeId, fullName, managerId, autoStart } = await req.json();
+    const { email, password, role, storeId, fullName, managerId, autoStart, departmentId } = await req.json();
 
     if (!email || !password || !role || !storeId) {
       return new Response(JSON.stringify({ error: "Missing required fields" }), {
@@ -100,14 +100,18 @@ Deno.serve(async (req) => {
 
     // Auto-start onboarding if requested
     if (role === "associate" && autoStart && managerId) {
+      const insertData: Record<string, unknown> = {
+        associate_id: newUser.user.id,
+        manager_id: managerId,
+        store_id: storeId,
+        status: "active",
+      };
+      if (departmentId) {
+        insertData.department_id = departmentId;
+      }
       const { error: programError } = await adminClient
         .from("onboarding_programs")
-        .insert({
-          associate_id: newUser.user.id,
-          manager_id: managerId,
-          store_id: storeId,
-          status: "active",
-        });
+        .insert(insertData);
       if (programError) {
         console.error("Failed to create onboarding program:", programError.message);
       }
