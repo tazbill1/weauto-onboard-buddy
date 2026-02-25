@@ -23,7 +23,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   useDays,
   useAllTasks,
+  useDepartments,
+  countBusinessDays,
 } from "@/hooks/useOnboardingData";
+import type { Department } from "@/hooks/useOnboardingData";
 import {
   useAllPrograms,
   useAllCompletions,
@@ -34,6 +37,7 @@ import {
   getAssociateStatusFromData,
   csvDownload,
 } from "@/hooks/useDashboardData";
+import { DepartmentBadge } from "@/components/DepartmentBadge";
 import { Download, Search } from "lucide-react";
 import { friendlyDate } from "@/lib/dateUtils";
 
@@ -43,6 +47,7 @@ export default function ReportsPage() {
   const { profile } = useAuth();
   const [reportType, setReportType] = useState<ReportType>("active");
   const [storeFilter, setStoreFilter] = useState<string>("all");
+  const [deptFilter, setDeptFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [sortCol, setSortCol] = useState("");
   const [sortAsc, setSortAsc] = useState(true);
@@ -57,10 +62,12 @@ export default function ReportsPage() {
   const { data: signoffs } = useAllSignoffs();
   const { data: profiles } = useAllProfiles();
   const { data: stores } = useStores();
+  const { data: departments } = useDepartments();
 
   const profileMap = useMemo(() => new Map(profiles?.map((p) => [p.user_id, p])), [profiles]);
   const storeMap = useMemo(() => new Map(stores?.map((s) => [s.id, s])), [stores]);
   const dayMap = useMemo(() => new Map(days?.map((d) => [d.id, d])), [days]);
+  const deptMap = useMemo(() => new Map(departments?.map((d) => [d.id, d])), [departments]);
 
   // Filter stores visible to this user
   const visibleStores = useMemo(() => {
@@ -73,9 +80,10 @@ export default function ReportsPage() {
     if (!programs) return [];
     let fp = programs;
     if (storeFilter !== "all") fp = fp.filter((p) => p.store_id === storeFilter);
+    if (deptFilter !== "all") fp = fp.filter((p) => p.department_id === deptFilter);
     if (profile?.role === "gm" && profile.store_id) fp = fp.filter((p) => p.store_id === profile.store_id);
     return fp;
-  }, [programs, storeFilter, profile]);
+  }, [programs, storeFilter, deptFilter, profile]);
 
   const handleSort = (col: string) => {
     if (sortCol === col) setSortAsc(!sortAsc);
@@ -97,21 +105,26 @@ export default function ReportsPage() {
       const prof = profileMap.get(p.associate_id);
       const mgr = profileMap.get(p.manager_id);
       const store = storeMap.get(p.store_id);
-      const status = getAssociateStatusFromData(p, ratings || []);
+      const dept = deptMap.get(p.department_id);
+      const totalDays = dept?.typical_duration_days || 20;
+      const status = getAssociateStatusFromData(p, ratings || [], totalDays);
       const startDate = new Date(p.start_date);
-      const daysDiff = Math.floor((Date.now() - startDate.getTime()) / (1000 * 60 * 60 * 24));
-      const expectedDay = Math.min(daysDiff + 1, 20);
+      const businessDays = countBusinessDays(startDate, new Date());
+      const expectedDay = Math.min(businessDays + 1, totalDays);
       return {
         name: prof?.full_name || "Unknown",
         store: store?.store_name || "",
+        department: dept?.label || "",
+        department_slug: dept?.slug || "",
         start_date: p.start_date,
         current_day: p.current_day,
         expected_day: expectedDay,
+        total_days: totalDays,
         status,
         manager: mgr?.full_name || "Unknown",
       };
     }).filter((r) => !search || r.name.toLowerCase().includes(search.toLowerCase())).sort(sortFn);
-  }, [filteredPrograms, profileMap, storeMap, ratings, search, sortCol, sortAsc]);
+  }, [filteredPrograms, profileMap, storeMap, deptMap, ratings, search, sortCol, sortAsc]);
 
   // Completion Report
   const completionRows = useMemo(() => {
@@ -120,6 +133,7 @@ export default function ReportsPage() {
       const prof = profileMap.get(p.associate_id);
       const mgr = profileMap.get(p.manager_id);
       const store = storeMap.get(p.store_id);
+      const dept = deptMap.get(p.department_id);
       const progRatings = (ratings || []).filter((r) => r.program_id === p.id);
       const meetsCount = progRatings.filter((r) => r.rating === "meets_expectation").length;
       const needsWorkCount = progRatings.filter((r) => r.rating === "needs_work").length;
@@ -129,6 +143,8 @@ export default function ReportsPage() {
       return {
         name: prof?.full_name || "Unknown",
         store: store?.store_name || "",
+        department: dept?.label || "",
+        department_slug: dept?.slug || "",
         start_date: p.start_date,
         completion_date: p.actual_end_date || "",
         days_to_complete: daysToComplete,
@@ -137,13 +153,13 @@ export default function ReportsPage() {
         manager: mgr?.full_name || "Unknown",
       };
     }).sort(sortFn);
-  }, [filteredPrograms, profileMap, storeMap, ratings, sortCol, sortAsc]);
+  }, [filteredPrograms, profileMap, storeMap, deptMap, ratings, sortCol, sortAsc]);
 
   // Performance Gaps Report
   const gapRows = useMemo(() => {
     if (!ratings || !allTasks || !days) return [];
     let scopeRatings = ratings;
-    if (storeFilter !== "all") {
+    if (storeFilter !== "all" || deptFilter !== "all") {
       const programIds = new Set(filteredPrograms.map((p) => p.id));
       scopeRatings = ratings.filter((r) => programIds.has(r.program_id));
     }
@@ -169,7 +185,7 @@ export default function ReportsPage() {
           struggle_pct: c.total > 0 ? Math.round(((c.nw + c.na) / c.total) * 100) : 0,
         };
       });
-  }, [ratings, allTasks, days, filteredPrograms, storeFilter, dayMap]);
+  }, [ratings, allTasks, days, filteredPrograms, storeFilter, deptFilter, dayMap]);
 
   // Manager Activity Report
   const managerRows = useMemo(() => {
@@ -183,7 +199,6 @@ export default function ReportsPage() {
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
       const monthSignoffs = mgrSignoffs.filter((s) => new Date(s.signed_off_at) >= monthStart).length;
 
-      // Avg days between check-ins
       const sorted = mgrSignoffs.sort((a, b) => new Date(a.signed_off_at).getTime() - new Date(b.signed_off_at).getTime());
       let avgGap = 0;
       if (sorted.length > 1) {
@@ -193,7 +208,6 @@ export default function ReportsPage() {
         avgGap = Math.round(gaps.reduce((a, b) => a + b, 0) / gaps.length);
       }
 
-      // Pending reviews: programs where last sign-off was > 48 hours ago
       const pendingCount = mgrPrograms.filter((p) => {
         const latestSignoff = mgrSignoffs.filter((s) => s.program_id === p.id).sort((a, b) => new Date(b.signed_off_at).getTime() - new Date(a.signed_off_at).getTime())[0];
         if (!latestSignoff) return true;
@@ -215,13 +229,13 @@ export default function ReportsPage() {
   const handleExport = () => {
     if (reportType === "active") {
       csvDownload("active-programs.csv",
-        ["Name", "Store", "Start Date", "Current Day", "Expected Day", "Status", "Manager"],
-        activeRows.map((r) => [r.name, r.store, r.start_date, String(r.current_day), String(r.expected_day), r.status, r.manager])
+        ["Name", "Store", "Department", "Start Date", "Current Day", "Expected Day", "Total Days", "Status", "Manager"],
+        activeRows.map((r) => [r.name, r.store, r.department, r.start_date, String(r.current_day), String(r.expected_day), String(r.total_days), r.status, r.manager])
       );
     } else if (reportType === "completion") {
       csvDownload("completion-report.csv",
-        ["Name", "Store", "Start Date", "Completion Date", "Days to Complete", "Meets Expectation", "Needs Work", "Manager"],
-        completionRows.map((r) => [r.name, r.store, r.start_date, r.completion_date, String(r.days_to_complete), String(r.meets), String(r.needs_work), r.manager])
+        ["Name", "Store", "Department", "Start Date", "Completion Date", "Days to Complete", "Meets Expectation", "Needs Work", "Manager"],
+        completionRows.map((r) => [r.name, r.store, r.department, r.start_date, r.completion_date, String(r.days_to_complete), String(r.meets), String(r.needs_work), r.manager])
       );
     } else if (reportType === "gaps") {
       csvDownload("performance-gaps.csv",
@@ -281,6 +295,19 @@ export default function ReportsPage() {
               </SelectContent>
             </Select>
           )}
+          {departments && departments.length > 1 && (
+            <Select value={deptFilter} onValueChange={setDeptFilter}>
+              <SelectTrigger className="w-44 h-9">
+                <SelectValue placeholder="All Departments" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Departments</SelectItem>
+                {departments.map((d) => (
+                  <SelectItem key={d.id} value={d.id}>{d.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
           {reportType === "active" && (
             <div className="relative flex-1 min-w-[180px]">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -304,6 +331,7 @@ export default function ReportsPage() {
                     <TableRow>
                       <SortHeader col="name">Name</SortHeader>
                       <SortHeader col="store">Store</SortHeader>
+                      <SortHeader col="department">Dept</SortHeader>
                       <SortHeader col="start_date">Start</SortHeader>
                       <SortHeader col="current_day">Day</SortHeader>
                       <SortHeader col="expected_day">Expected</SortHeader>
@@ -316,8 +344,9 @@ export default function ReportsPage() {
                       <TableRow key={i}>
                         <TableCell className="font-medium">{r.name}</TableCell>
                         <TableCell>{r.store}</TableCell>
+                        <TableCell><DepartmentBadge label={r.department} slug={r.department_slug} /></TableCell>
                         <TableCell>{r.start_date}</TableCell>
-                        <TableCell>{r.current_day}</TableCell>
+                        <TableCell>{r.current_day}/{r.total_days}</TableCell>
                         <TableCell>{r.expected_day}</TableCell>
                         <TableCell>
                           <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
@@ -330,7 +359,7 @@ export default function ReportsPage() {
                       </TableRow>
                     ))}
                     {!activeRows.length && (
-                      <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">No active programs</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">No active programs</TableCell></TableRow>
                     )}
                   </TableBody>
                 </Table>
@@ -342,6 +371,7 @@ export default function ReportsPage() {
                     <TableRow>
                       <SortHeader col="name">Name</SortHeader>
                       <SortHeader col="store">Store</SortHeader>
+                      <SortHeader col="department">Dept</SortHeader>
                       <SortHeader col="start_date">Start</SortHeader>
                       <SortHeader col="completion_date">Completed</SortHeader>
                       <SortHeader col="days_to_complete">Days</SortHeader>
@@ -355,6 +385,7 @@ export default function ReportsPage() {
                       <TableRow key={i}>
                         <TableCell className="font-medium">{r.name}</TableCell>
                         <TableCell>{r.store}</TableCell>
+                        <TableCell><DepartmentBadge label={r.department} slug={r.department_slug} /></TableCell>
                         <TableCell>{r.start_date}</TableCell>
                         <TableCell>{r.completion_date}</TableCell>
                         <TableCell>{r.days_to_complete}</TableCell>
@@ -364,7 +395,7 @@ export default function ReportsPage() {
                       </TableRow>
                     ))}
                     {!completionRows.length && (
-                      <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">No completed programs</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">No completed programs</TableCell></TableRow>
                     )}
                   </TableBody>
                 </Table>

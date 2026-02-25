@@ -47,7 +47,8 @@ export default function HRAdminPage() {
   const { data: profiles } = useAllProfiles();
   const { data: stores } = useStores();
   const { data: departments } = useDepartments();
-  const deptMap = new Map(departments?.map((d) => [d.id, d.label]));
+  const deptMap = new Map(departments?.map((d) => [d.id, d]));
+  const deptLabelMap = new Map(departments?.map((d) => [d.id, d.label]));
 
   useEffect(() => { document.title = "Team Status — WEAuto"; }, []);
 
@@ -192,7 +193,7 @@ export default function HRAdminPage() {
                 </div>
                 <ConfirmDialog
                   title="Start Onboarding?"
-                  description={`Start onboarding for ${profileMap.get(selectedAssociate)?.full_name || "this associate"} beginning ${startDate ? format(startDate, "PPP") : "selected date"}? This will create their 20-day program.`}
+                  description={`Start onboarding for ${profileMap.get(selectedAssociate)?.full_name || "this associate"} beginning ${startDate ? format(startDate, "PPP") : "selected date"}? This will create their onboarding program.`}
                   confirmLabel="Start Onboarding"
                   onConfirm={handleCreate}
                   disabled={creating || !selectedAssociate || !selectedManager || !startDate}
@@ -237,7 +238,7 @@ export default function HRAdminPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-semibold text-foreground truncate">{p?.full_name || "Unknown"}</span>
-                        {deptMap.get(program.department_id) && <DepartmentBadge label={deptMap.get(program.department_id)!} />}
+                        {deptMap.get(program.department_id) && <DepartmentBadge label={deptMap.get(program.department_id)!.label} slug={deptMap.get(program.department_id)!.slug} />}
                         {isCompleted ? (
                           <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-success/10 text-success">
                             <CheckCircle2 className="h-3 w-3" /> Certified
@@ -255,7 +256,7 @@ export default function HRAdminPage() {
                         ) : (
                           <span>Expected: {getExpectedEnd(program.start_date)}</span>
                         )}
-                        {!isCompleted && <span>Day {program.current_day} / 20</span>}
+                        {!isCompleted && <span>Day {program.current_day} / {deptMap.get(program.department_id)?.typical_duration_days || 20}</span>}
                         <span>Manager: {mgr?.full_name || "—"}</span>
                       </div>
                     </div>

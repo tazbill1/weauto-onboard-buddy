@@ -114,20 +114,30 @@ export default function RegisterPage() {
       .update({ status: "accepted", accepted_at: new Date().toISOString() } as any)
       .eq("token", inviteToken);
 
-    // Auto-create onboarding program if applicable
+    // Auto-create onboarding program if applicable — only if department has content
     if (authData.user && invite.auto_start_onboarding && invite.role === "associate" && invite.assigned_manager_id) {
-      const insertData: any = {
-        associate_id: authData.user.id,
-        manager_id: invite.assigned_manager_id,
-        store_id: invite.store_id,
-        start_date: format(new Date(), "yyyy-MM-dd"),
-        status: "active",
-        current_day: 1,
-      };
+      let hasDays = false;
       if (invite.department_id) {
-        insertData.department_id = invite.department_id;
+        const { data: deptDays } = await supabase
+          .from("days" as any)
+          .select("id")
+          .eq("department_id", invite.department_id)
+          .limit(1);
+        hasDays = !!deptDays && deptDays.length > 0;
       }
-      await supabase.from("onboarding_programs" as any).insert(insertData as any);
+
+      if (hasDays) {
+        const insertData: any = {
+          associate_id: authData.user.id,
+          manager_id: invite.assigned_manager_id,
+          store_id: invite.store_id,
+          start_date: format(new Date(), "yyyy-MM-dd"),
+          status: "active",
+          current_day: 1,
+          department_id: invite.department_id,
+        };
+        await supabase.from("onboarding_programs" as any).insert(insertData as any);
+      }
     }
 
     setLoading(false);

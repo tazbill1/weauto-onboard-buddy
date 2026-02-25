@@ -59,6 +59,7 @@ const sectionIcons: Record<string, typeof BookOpen> = {
 const sectionOrder = ["learn", "practice", "mastery_homework", "manager_checkin"];
 
 export default function BuilderReviewPage() {
+  useEffect(() => { document.title = "Review Draft — WEAuto"; }, []);
   const { sessionId } = useParams<{ sessionId: string }>();
   const navigate = useNavigate();
   const { profile } = useAuth();

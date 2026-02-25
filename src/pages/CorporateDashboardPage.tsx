@@ -64,7 +64,7 @@ export default function CorporateDashboardPage() {
   const statusCounts = useMemo(() => {
     const counts = { on_track: 0, behind: 0, needs_attention: 0 };
     activePrograms.forEach((p) => {
-      counts[getAssociateStatusFromData(p, ratings || [])]++;
+      counts[getAssociateStatusFromData(p, ratings || [], undefined)]++;
     });
     return counts;
   }, [activePrograms, ratings]);
@@ -85,7 +85,7 @@ export default function CorporateDashboardPage() {
     return stores.map((store) => {
       const storeProgs = activePrograms.filter((p) => p.store_id === store.id);
       const sc = { on_track: 0, behind: 0, needs_attention: 0 };
-      storeProgs.forEach((p) => { sc[getAssociateStatusFromData(p, ratings || [])]++; });
+      storeProgs.forEach((p) => { sc[getAssociateStatusFromData(p, ratings || [], undefined)]++; });
       const avgProg = storeProgs.length && allTasks?.length
         ? Math.round(storeProgs.reduce((s, p) => s + calcProgress(p.id, allTasks, completions || []), 0) / storeProgs.length)
         : 0;

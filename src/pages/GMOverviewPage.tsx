@@ -44,7 +44,7 @@ export default function GMOverviewPage() {
   const { data: profiles } = useAllProfiles();
   const { data: stores } = useStores();
   const { data: departments } = useDepartments();
-  const deptMap = new Map(departments?.map((d) => [d.id, d.label]));
+  const deptMap = new Map(departments?.map((d) => [d.id, d]));
 
   const storeId = profile?.store_id;
   const store = stores?.find((s) => s.id === storeId);
@@ -72,7 +72,7 @@ export default function GMOverviewPage() {
   const statusCounts = useMemo(() => {
     const counts = { on_track: 0, behind: 0, needs_attention: 0 };
     storePrograms.forEach((p) => {
-      const s = getAssociateStatusFromData(p, ratings || []);
+      const s = getAssociateStatusFromData(p, ratings || [], deptMap.get(p.department_id)?.typical_duration_days);
       counts[s]++;
     });
     return counts;
@@ -169,7 +169,7 @@ export default function GMOverviewPage() {
               {storePrograms.map((program) => {
                 const p = profileMap.get(program.associate_id);
                 const day = dayMap.get(program.current_day);
-                const status = getAssociateStatusFromData(program, ratings || []);
+                const status = getAssociateStatusFromData(program, ratings || [], deptMap.get(program.department_id)?.typical_duration_days);
                 const progress = allTasks
                   ? calcProgress(program.id, allTasks, completions || [])
                   : 0;
@@ -190,7 +190,7 @@ export default function GMOverviewPage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-semibold text-foreground truncate">{p?.full_name || "Unknown"}</span>
-                          {deptMap.get(program.department_id) && <DepartmentBadge label={deptMap.get(program.department_id)!} />}
+                          {deptMap.get(program.department_id) && <DepartmentBadge label={deptMap.get(program.department_id)!.label} slug={deptMap.get(program.department_id)!.slug} />}
                           <StatusBadge status={status} />
                         </div>
                         <p className="text-xs text-muted-foreground">Day {program.current_day} · {day?.title || ""}</p>

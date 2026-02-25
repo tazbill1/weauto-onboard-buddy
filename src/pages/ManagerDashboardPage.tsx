@@ -59,6 +59,7 @@ function AssociateCard({
   days,
   onCompleted,
   departmentLabel,
+  departmentSlug,
 }: {
   program: OnboardingProgram;
   profile: ProfileBasic | undefined;
@@ -67,6 +68,7 @@ function AssociateCard({
   days: Day[];
   onCompleted: () => void;
   departmentLabel?: string;
+  departmentSlug?: string;
 }) {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -160,7 +162,7 @@ function AssociateCard({
             <h3 className="text-sm font-bold text-foreground truncate">
               {profile?.full_name || "Unknown"}
             </h3>
-            {departmentLabel && <DepartmentBadge label={departmentLabel} />}
+            {departmentLabel && <DepartmentBadge label={departmentLabel} slug={departmentSlug} />}
             <StatusBadge status={status} />
           </div>
           <p className="text-xs text-muted-foreground mt-0.5">
@@ -283,7 +285,7 @@ export default function ManagerDashboardPage() {
   const { data: departments } = useDepartments();
   const navigate = useNavigate();
 
-  const deptMap = new Map(departments?.map((d) => [d.id, d.label]));
+  const deptMap = new Map(departments?.map((d) => [d.id, d]));
 
   const programs = isManager ? managedPrograms : allPrograms;
   const isLoading = isManager ? managedLoading : allLoading;
@@ -408,9 +410,11 @@ export default function ManagerDashboardPage() {
                   ratings={[]}
                   days={days || []}
                   onCompleted={() => queryClient.invalidateQueries({ queryKey: ["managed-programs"] })}
-                  departmentLabel={deptMap.get(program.department_id)}
-                />
+                   departmentLabel={deptMap.get(program.department_id)?.label}
+                   departmentSlug={deptMap.get(program.department_id)?.slug}
+                 />
               ))}
+
             </div>
           )}
         </div>
