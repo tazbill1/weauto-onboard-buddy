@@ -9,6 +9,7 @@ import { StatusDot } from "@/components/StatusBadge";
 import {
   useDays,
   useAllTasks,
+  useDepartments,
 } from "@/hooks/useOnboardingData";
 import {
   useAllPrograms,
@@ -39,6 +40,8 @@ export default function CorporateDashboardPage() {
   const { data: ratings } = useAllRatings();
   const { data: profiles } = useAllProfiles();
   const { data: stores } = useStores();
+  const { data: departments } = useDepartments();
+  const deptMap = useMemo(() => new Map(departments?.map(d => [d.id, d]) || []), [departments]);
 
   const activePrograms = useMemo(
     () => programs?.filter((p) => p.status === "active") || [],
@@ -64,7 +67,7 @@ export default function CorporateDashboardPage() {
   const statusCounts = useMemo(() => {
     const counts = { on_track: 0, behind: 0, needs_attention: 0 };
     activePrograms.forEach((p) => {
-      counts[getAssociateStatusFromData(p, ratings || [], undefined)]++;
+      counts[getAssociateStatusFromData(p, ratings || [], deptMap.get(p.department_id)?.typical_duration_days)]++;
     });
     return counts;
   }, [activePrograms, ratings]);
@@ -85,7 +88,7 @@ export default function CorporateDashboardPage() {
     return stores.map((store) => {
       const storeProgs = activePrograms.filter((p) => p.store_id === store.id);
       const sc = { on_track: 0, behind: 0, needs_attention: 0 };
-      storeProgs.forEach((p) => { sc[getAssociateStatusFromData(p, ratings || [], undefined)]++; });
+      storeProgs.forEach((p) => { sc[getAssociateStatusFromData(p, ratings || [], deptMap.get(p.department_id)?.typical_duration_days)]++; });
       const avgProg = storeProgs.length && allTasks?.length
         ? Math.round(storeProgs.reduce((s, p) => s + calcProgress(p.id, allTasks, completions || []), 0) / storeProgs.length)
         : 0;

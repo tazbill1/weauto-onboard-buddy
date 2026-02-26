@@ -30,7 +30,7 @@ import type { Department } from "@/hooks/useOnboardingData";
 import { Send, RotateCw, XCircle, UserPlus, Copy, CheckCheck, Link as LinkIcon, UserCog, AlertTriangle, Sparkles } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
-import { roleLabels, getAllowedRoles, isAdmin, isManagerOrAbove, normalizeRole } from "@/lib/roles";
+import { roleLabels, getAllowedRoles, isAdmin, isManagerOrAbove, normalizeRole, canBuildPrograms } from "@/lib/roles";
 import type { AppRole } from "@/lib/roles";
 
 export default function InvitePage() {
@@ -585,7 +585,10 @@ export default function InvitePage() {
             </AlertDialogTitle>
             <AlertDialogDescription>
               No training program has been created for <strong>{warningDeptName}</strong> yet.
-              The associate will see a placeholder when they log in. Would you like to build a program first?
+              The associate will see a placeholder when they log in.
+              {canBuildPrograms(myRole)
+                ? " Would you like to build a program first?"
+                : " Ask your admin to build a program for this department."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -601,16 +604,18 @@ export default function InvitePage() {
             >
               Send Invite Anyway
             </AlertDialogAction>
-            <AlertDialogAction
-              onClick={() => {
-                setShowEmptyDeptWarning(false);
-                setPendingAction(null);
-                navigate(`/builder/new?department=${warningDeptId}`);
-              }}
-              className="gap-1"
-            >
-              <Sparkles className="h-4 w-4" /> Build Program Now
-            </AlertDialogAction>
+            {canBuildPrograms(myRole) && (
+              <AlertDialogAction
+                onClick={() => {
+                  setShowEmptyDeptWarning(false);
+                  setPendingAction(null);
+                  navigate(`/builder/new?department=${warningDeptId}`);
+                }}
+                className="gap-1"
+              >
+                <Sparkles className="h-4 w-4" /> Build Program Now
+              </AlertDialogAction>
+            )}
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
