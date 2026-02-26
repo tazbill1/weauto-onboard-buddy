@@ -76,7 +76,7 @@ function AppRoutes() {
       <Route path="/stores" element={<ProtectedRoute><RoleGuard allowedRoles={['location_admin', 'app_admin']}><GMOverviewPage /></RoleGuard></ProtectedRoute>} />
       <Route path="/store/:storeId" element={<ProtectedRoute><RoleGuard allowedRoles={['location_admin', 'app_admin']}><StoreDetailPage /></RoleGuard></ProtectedRoute>} />
       <Route path="/reports" element={<ProtectedRoute><RoleGuard allowedRoles={['location_admin', 'app_admin']}><ReportsPage /></RoleGuard></ProtectedRoute>} />
-      <Route path="/content-admin" element={<ProtectedRoute><RoleGuard allowedRoles={['app_admin']}><ContentAdminPage /></RoleGuard></ProtectedRoute>} />
+      <Route path="/content-admin" element={<ProtectedRoute><RoleGuard allowedRoles={['app_admin', 'location_admin']}><ContentAdminPage /></RoleGuard></ProtectedRoute>} />
       <Route path="/templates/new" element={<ProtectedRoute><RoleGuard allowedRoles={['app_admin', 'location_admin']}><CreateTemplatePage /></RoleGuard></ProtectedRoute>} />
       <Route path="/templates/:templateId/edit" element={<ProtectedRoute><RoleGuard allowedRoles={['app_admin', 'location_admin']}><TemplateEditorPage /></RoleGuard></ProtectedRoute>} />
       <Route path="/invite" element={<ProtectedRoute><RoleGuard allowedRoles={['manager', 'location_admin', 'app_admin']}><InvitePage /></RoleGuard></ProtectedRoute>} />

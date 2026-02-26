@@ -68,6 +68,8 @@ export const isManagerOrAbove = (role: string | undefined | null) =>
   ["app_admin", "location_admin", "manager"].includes(normalizeRole(role));
 export const isLocationAdminOrAbove = (role: string | undefined | null) =>
   ["app_admin", "location_admin"].includes(normalizeRole(role));
+export const canBuildPrograms = (role: string | undefined | null) =>
+  ["app_admin", "location_admin"].includes(normalizeRole(role));
 
 /** Returns the roles a given role is allowed to create/invite */
 export function getAllowedRoles(myRole: string): AppRole[] {

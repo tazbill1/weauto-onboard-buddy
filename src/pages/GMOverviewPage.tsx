@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 import { InviteFAB } from "@/components/InviteFAB";
 import { useAuth } from "@/lib/auth";
 import { AppShell } from "@/components/AppShell";
@@ -21,7 +22,7 @@ import {
   getAssociateStatusFromData,
   calcProgress,
 } from "@/hooks/useDashboardData";
-import { Building2, Users, TrendingUp } from "lucide-react";
+import { Building2, Users, TrendingUp, Settings, Sparkles, UserPlus } from "lucide-react";
 import { DepartmentBadge } from "@/components/DepartmentBadge";
 import {
   ChartContainer,
@@ -149,6 +150,22 @@ export default function GMOverviewPage() {
               <p className="text-[10px] text-muted-foreground font-medium">{s.label}</p>
             </div>
           ))}
+        </div>
+
+        {/* Program Management */}
+        <div>
+          <h2 className="text-base font-bold text-foreground mb-2">Program Management</h2>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => navigate("/content-admin")} className="gap-1.5">
+              <Settings className="h-4 w-4" /> Content Admin
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => navigate("/builder/new")} className="gap-1.5">
+              <Sparkles className="h-4 w-4" /> Build with AI
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => navigate("/invite")} className="gap-1.5">
+              <UserPlus className="h-4 w-4" /> Invite
+            </Button>
+          </div>
         </div>
 
         {/* Associates List */}

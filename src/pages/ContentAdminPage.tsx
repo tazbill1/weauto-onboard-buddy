@@ -3,6 +3,7 @@ import { sanitizeHtml } from "@/lib/sanitize";
 import { AppShell } from "@/components/AppShell";
 import { useAuth } from "@/lib/auth";
 import { Navigate, useNavigate } from "react-router-dom";
+import { isLocationAdminOrAbove, isAdmin } from "@/lib/roles";
 import { supabase } from "@/integrations/supabase/client";
 import { useDays, useAllTasks, getSectionLabel, getPhaseLabel, useDepartments, type Day, type Task, type Department } from "@/hooks/useOnboardingData";
 import { useTemplates, useUpdateTemplate } from "@/hooks/useTemplates";
@@ -35,7 +36,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   Pencil, Copy, Eye, Camera, Clock, BookOpen, Dumbbell, Briefcase, UserCheck, Save,
   MoreVertical, Plus, Sparkles, FileText, Rocket, Archive, Users, Trash2, ExternalLink,
-  MessageSquare, CheckCircle2, XCircle, Loader2,
+  MessageSquare, CheckCircle2, XCircle, Loader2, Info,
 } from "lucide-react";
 import { RichTextEditor } from "@/components/RichTextEditor";
 import { formatDistanceToNow } from "date-fns";
@@ -138,9 +139,13 @@ export default function ContentAdminPage() {
     }
   }, [departments, selectedDeptId]);
 
-  if (profile?.role !== "app_admin") {
+  if (!isLocationAdminOrAbove(profile?.role)) {
     return <Navigate to="/" replace />;
   }
+
+  const isAppAdmin = isAdmin(profile?.role);
+  const userStoreId = profile?.store_id;
+  const userStoreName = stores?.find(s => s.id === userStoreId)?.store_name;
 
   const selectedDept = departments?.find((d) => d.id === selectedDeptId);
 
@@ -298,6 +303,12 @@ export default function ContentAdminPage() {
   return (
     <AppShell>
       <div className="px-4 py-4 animate-fade-in space-y-4 max-w-4xl mx-auto">
+        {!isAppAdmin && userStoreName && (
+          <div className="flex items-center gap-2 bg-primary/10 text-primary rounded-lg px-3 py-2 text-sm">
+            <Info className="h-4 w-4 shrink-0" />
+            Managing programs for <strong>{userStoreName}</strong>
+          </div>
+        )}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-xl font-bold text-foreground">Content Admin</h1>
@@ -351,7 +362,11 @@ export default function ContentAdminPage() {
             </div>
           ) : templates && templates.length > 0 ? (
             <div className="space-y-2">
-              {templates.map((t) => (
+              {templates
+                .filter((t) => isAppAdmin ? true : t.is_master || t.store_id === userStoreId)
+                .map((t) => {
+                const isReadOnly = !isAppAdmin && t.is_master;
+                return (
                 <Card key={t.id} className="p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
@@ -377,30 +392,39 @@ export default function ContentAdminPage() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => navigate(`/templates/${t.id}/edit`)}>
-                          <Pencil className="h-3.5 w-3.5 mr-2" /> Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleDuplicateTemplate(t)}>
-                          <Copy className="h-3.5 w-3.5 mr-2" /> Duplicate
-                        </DropdownMenuItem>
-                        {t.status === "draft" && (
-                          <DropdownMenuItem
-                            onClick={() => navigate(`/templates/${t.id}/edit`)}
-                            className="text-emerald-600"
-                          >
-                            <Rocket className="h-3.5 w-3.5 mr-2" /> Publish
+                        {isReadOnly ? (
+                          <DropdownMenuItem onClick={() => handleDuplicateTemplate(t)}>
+                            <Copy className="h-3.5 w-3.5 mr-2" /> Customize for My Store
                           </DropdownMenuItem>
-                        )}
-                        {t.status !== "archived" && (
-                          <DropdownMenuItem onClick={() => handleArchiveTemplate(t.id)} className="text-destructive">
-                            <Archive className="h-3.5 w-3.5 mr-2" /> Archive
-                          </DropdownMenuItem>
+                        ) : (
+                          <>
+                            <DropdownMenuItem onClick={() => navigate(`/templates/${t.id}/edit`)}>
+                              <Pencil className="h-3.5 w-3.5 mr-2" /> Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleDuplicateTemplate(t)}>
+                              <Copy className="h-3.5 w-3.5 mr-2" /> Duplicate
+                            </DropdownMenuItem>
+                            {t.status === "draft" && (
+                              <DropdownMenuItem
+                                onClick={() => navigate(`/templates/${t.id}/edit`)}
+                                className="text-emerald-600"
+                              >
+                                <Rocket className="h-3.5 w-3.5 mr-2" /> Publish
+                              </DropdownMenuItem>
+                            )}
+                            {t.status !== "archived" && (
+                              <DropdownMenuItem onClick={() => handleArchiveTemplate(t.id)} className="text-destructive">
+                                <Archive className="h-3.5 w-3.5 mr-2" /> Archive
+                              </DropdownMenuItem>
+                            )}
+                          </>
                         )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
                 </Card>
-              ))}
+              );
+              })}
             </div>
           ) : !templatesLoading ? (
             <Card className="p-6 text-center space-y-3">
