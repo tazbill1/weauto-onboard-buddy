@@ -1,15 +1,11 @@
-import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
 import { AppShell } from "@/components/AppShell";
-import { Card } from "@/components/ui/card";
-import { ProgressRing } from "@/components/ProgressRing";
-import { DayTimeline } from "@/components/DayTimeline";
-import { TaskItem } from "@/components/TaskItem";
 import { OnboardingFlow, useShowOnboarding } from "@/components/OnboardingFlow";
-import { EmptyState } from "@/components/ErrorStates";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { DashboardTab } from "@/components/home/DashboardTab";
+import { JourneyTab } from "@/components/home/JourneyTab";
 import GMOverviewPage from "./GMOverviewPage";
 import CorporateDashboardPage from "./CorporateDashboardPage";
-import HRAdminPage from "./HRAdminPage";
 import ManagerDashboardPage from "./ManagerDashboardPage";
 import {
   useDays,
@@ -18,19 +14,14 @@ import {
   useCompletions,
   useAllTasks,
   useToggleCompletion,
-  getPhaseLabel,
-  getSectionLabel,
   useDepartment,
 } from "@/hooks/useOnboardingData";
 import { useNotifications } from "@/hooks/useNotifications";
-import { relativeTime } from "@/lib/dateUtils";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Clock, Upload, CheckCircle2, AlertTriangle, Trophy, Inbox, TrendingDown } from "lucide-react";
 import { useEffect } from "react";
+import { LayoutDashboard, MapIcon } from "lucide-react";
 
 export default function HomePage() {
   const { profile } = useAuth();
-  const navigate = useNavigate();
   const firstName = profile?.full_name?.split(" ")[0] || "there";
   const isAssociate = profile?.role === "user";
   const { show: showOnboarding, dismiss: dismissOnboarding } = useShowOnboarding();
@@ -52,7 +43,6 @@ export default function HomePage() {
   const currentDay = days?.find((d) => d.day_number === currentDayNumber);
   const { data: currentDayTasks } = useTasksForDay(currentDay?.id);
 
-  // Filter tasks to only those belonging to days in this department
   const departmentDayIds = new Set(days?.map((d) => d.id) || []);
   const deptTasks = allTasks?.filter((t) => departmentDayIds.has(t.day_id)) || [];
 
@@ -60,9 +50,7 @@ export default function HomePage() {
   const completedCount = completions?.filter((c) => c.status === "completed").length || 0;
   const progress = totalTasks > 0 ? (completedCount / totalTasks) * 100 : 0;
 
-  // Dynamic total days
   const totalDays = department?.typical_duration_days || days?.length || 20;
-
   const noDaysYet = days && days.length === 0 && !!program;
 
   const completedDays = new Set<number>();
@@ -81,151 +69,60 @@ export default function HomePage() {
     return acc;
   }, {} as Record<string, typeof currentDayTasks>);
 
-  const completionMap = new Map(completions?.map((c) => [c.task_id, c]));
+  const completionMap = new globalThis.Map(completions?.map((c) => [c.task_id, c]));
 
-  // Role-specific home pages (using new normalized roles)
+  // Role-specific home pages
   if (profile?.role === "location_admin") return <GMOverviewPage />;
   if (profile?.role === "app_admin") return <CorporateDashboardPage />;
   if (profile?.role === "manager") return <ManagerDashboardPage />;
 
-  // Show onboarding flow for first-time associates
+  // Onboarding flow for first-time associates
   if (isAssociate && showOnboarding) {
     return <OnboardingFlow onComplete={dismissOnboarding} />;
   }
 
   return (
     <AppShell>
-      <div className="px-4 py-6 animate-fade-in space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Hi, {firstName} 👋</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Let's keep your onboarding on track!
-          </p>
-        </div>
+      <div className="px-4 py-6 animate-fade-in">
+        <Tabs defaultValue="dashboard" className="w-full">
+          <TabsList className="w-full mb-5">
+            <TabsTrigger value="dashboard" className="flex-1 gap-1.5">
+              <LayoutDashboard className="h-4 w-4" />
+              Dashboard
+            </TabsTrigger>
+            <TabsTrigger value="journey" className="flex-1 gap-1.5">
+              <MapIcon className="h-4 w-4" />
+              Journey
+            </TabsTrigger>
+          </TabsList>
 
-        {daysLoading ? (
-          <Skeleton className="h-48 w-full rounded-2xl" />
-        ) : (
-          <Card className="relative overflow-hidden p-5">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -translate-y-8 translate-x-8" />
-            <div className="flex items-center gap-5">
-              <div className="flex-1">
-                <p className="text-xs font-semibold uppercase tracking-wider text-secondary">
-                  {currentDay ? getPhaseLabel(currentDay.phase) : (department?.label || "")}
-                </p>
-                <p className="mt-1 text-4xl font-extrabold text-foreground">
-                  Day {currentDayNumber}
-                  <span className="text-lg font-medium text-muted-foreground"> / {totalDays}</span>
-                </p>
-                <p className="mt-1 text-sm font-medium text-foreground">{currentDay?.title}</p>
-              </div>
-              <ProgressRing progress={progress} size={100} strokeWidth={7} />
-            </div>
-          </Card>
-        )}
-
-        {/* Behind Schedule Banner */}
-        {isAssociate && isBehindSchedule && (
-          <button
-            onClick={() => navigate("/notifications")}
-            className="w-full flex items-center gap-3 rounded-xl bg-destructive/10 border border-destructive/20 p-3.5 text-left hover:bg-destructive/15 transition-colors"
-          >
-            <div className="h-9 w-9 rounded-full bg-destructive/20 flex items-center justify-center flex-shrink-0">
-              <TrendingDown className="h-4.5 w-4.5 text-destructive" />
-            </div>
-            <div className="flex-1">
-              <p className="text-sm font-bold text-destructive">You're behind schedule</p>
-              <p className="text-xs text-destructive/70">Tap to see what needs your attention</p>
-            </div>
-          </button>
-        )}
-
-        {/* Recent Notifications */}
-        {isAssociate && recentUnread.length > 0 && (
-          <div>
-            <h2 className="text-base font-bold text-foreground mb-2">Recent Alerts</h2>
-            <Card className="divide-y divide-border overflow-hidden">
-              {recentUnread.map((n) => {
-                const iconMap: Record<string, typeof Clock> = {
-                  behind_schedule: Clock, deliverable_submitted: Upload, checkin_complete: CheckCircle2,
-                  needs_work: AlertTriangle, milestone: Trophy,
-                };
-                const colorMap: Record<string, string> = {
-                  behind_schedule: "text-destructive bg-destructive/10",
-                  deliverable_submitted: "text-warning bg-warning/10",
-                  checkin_complete: "text-success bg-success/10",
-                  needs_work: "text-warning bg-warning/10",
-                  milestone: "text-secondary bg-secondary/10",
-                };
-                const Icon = iconMap[n.type] || Clock;
-                return (
-                  <button key={n.id} onClick={() => navigate("/notifications")} className="flex items-start gap-3 w-full text-left p-3 hover:bg-muted/50 transition-colors">
-                    <div className={`mt-0.5 h-8 w-8 rounded-full flex items-center justify-center flex-shrink-0 ${colorMap[n.type] || ""}`}>
-                      <Icon className="h-4 w-4" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-foreground truncate">{n.title}</p>
-                      <p className="text-xs text-muted-foreground line-clamp-1">{n.body}</p>
-                      <p className="text-[10px] text-muted-foreground/60 mt-0.5">{relativeTime(n.created_at)}</p>
-                    </div>
-                    <span className="h-2 w-2 rounded-full bg-secondary flex-shrink-0 mt-2" />
-                  </button>
-                );
-              })}
-            </Card>
-          </div>
-        )}
-
-        {/* Today's Tasks */}
-        <div>
-          <h2 className="text-base font-bold text-foreground mb-3">Today's Tasks</h2>
-          {!program ? (
-            <EmptyState
-              icon={Inbox}
-              title="No active program yet"
-              description="HR will set up your onboarding when you're ready to begin."
+          <TabsContent value="dashboard">
+            <DashboardTab
+              firstName={firstName}
+              program={program}
+              department={department}
+              currentDay={currentDay}
+              currentDayNumber={currentDayNumber}
+              totalDays={totalDays}
+              progress={progress}
+              daysLoading={daysLoading}
+              noDaysYet={!!noDaysYet}
+              isBehindSchedule={!!isBehindSchedule}
+              recentUnread={recentUnread}
+              tasksBySection={tasksBySection}
+              completionMap={completionMap}
+              toggleCompletion={toggleCompletion}
             />
-          ) : noDaysYet ? (
-            <Card className="p-6 text-center">
-              <Clock className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-              <p className="text-sm font-bold text-foreground mb-1">Your onboarding program is being prepared</p>
-              <p className="text-xs text-muted-foreground">Your manager will notify you when training content is ready.</p>
-            </Card>
-          ) : (
-            <div className="space-y-4">
-              {Object.entries(tasksBySection).map(([section, tasks]) => (
-                <div key={section}>
-                  <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1 px-1">
-                    {getSectionLabel(section)}
-                  </h3>
-                  <Card className="divide-y divide-border">
-                    {tasks!.map((task) => (
-                      <TaskItem
-                        key={task.id}
-                        task={task}
-                        completion={completionMap.get(task.id)}
-                        onToggle={() =>
-                          toggleCompletion.mutate({
-                            programId: program.id,
-                            taskId: task.id,
-                            currentStatus: completionMap.get(task.id)?.status,
-                          })
-                        }
-                      />
-                    ))}
-                  </Card>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+          </TabsContent>
 
-        {days && days.length > 0 && !noDaysYet && (
-          <div>
-            <h2 className="text-base font-bold text-foreground mb-3">Your Journey</h2>
-            <DayTimeline days={days} currentDay={currentDayNumber} completedDays={completedDays} />
-          </div>
-        )}
+          <TabsContent value="journey">
+            <JourneyTab
+              days={days}
+              currentDay={currentDayNumber}
+              completedDays={completedDays}
+            />
+          </TabsContent>
+        </Tabs>
       </div>
     </AppShell>
   );
